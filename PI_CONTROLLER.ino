@@ -1,5 +1,4 @@
 
-
 float pi = 3.1415; // This is PI
 
 const int APIN1 = 2;  // A pin on motor 1
@@ -71,18 +70,21 @@ void setup() {
 }
 
 void loop() {
-/*
+
   switch (desired_output) {
     case 0:
       desired_pos = {0,0};
+      break;
     case 1:
       desired_pos = {0, pi};
+      break;
     case 2:
       desired_pos = {pi, 0};
+      break;
     case 3:
       desired_pos = {pi, pi};
+      break;
   }
-*/
   int i;
   for(i=0;i<2;i++){
     current_time = (float)(last_time_ms-start_time_ms)/1000; //gets the current time
