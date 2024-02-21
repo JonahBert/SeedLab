@@ -1,4 +1,6 @@
-// printReceived helps us see what data we are getting from the leader
+
+// printReceived allows us to see what data we are getting from the leader
+
 void printReceived() {
   Serial.print("Recieved: ");
   Serial.println(instruction[0]);
@@ -6,3 +8,4 @@ void printReceived() {
   reply = int(instruction[0]) + 100;
   Serial.println(reply);
 }
+
