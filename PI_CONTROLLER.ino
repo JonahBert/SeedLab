@@ -1,3 +1,11 @@
+#include <Wire.h>
+#define MY_ADDR 8
+// Global variables to be used for I2C communication
+volatile uint8_t offset = 0;
+
+volatile uint8_t instruction[32] = {0};
+volatile uint8_t msgLength = 0;
+volatile uint8_t reply = 0;
 
 float pi = 3.1415; // This is PI
 
@@ -7,11 +15,11 @@ const int BPIN1 = 5;  // B pin on motor 1
 const int BPIN2 = 6;  // B pin on motor 2
 int desired_output = 0;
 
-//These are the encoder counts on the motors 1 & 2
-int motorCount[2] = {0,0};
+
+int motorCount[2] = {0,0}; //These are the encoder counts on the motors 1 & 2
 unsigned int pwm_duty_cycle[2] = {0,0}; //Duty cycle for motor 1
 float pos_velo_rad_s[2] = {0,0};//velocity array for motors 
-float desired_pos[2] = {pi,pi}; // desired motor position
+float desired_pos[2] = {0,0}; // desired motor position
 float pos_error[2] = {0,0}; //error for position controller
 float error[2] = {0,0}; //error for velocity controller
 float integral_error[2] = {0,0};//integral error for position
@@ -45,7 +53,6 @@ void motorTwoInterrupt() {
   else motorCount[1] -=2;
 }
 
-
 void setup() {
   //Initialize pins as outputs for motor driver and set encoder pins to pullup-resistor.
   Serial.begin(115200);
@@ -67,22 +74,46 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(APIN1), motorOneInterrupt, CHANGE);
   attachInterrupt(digitalPinToInterrupt(APIN2), motorTwoInterrupt, CHANGE);
 
+  //Send and Receive Setup
+  //We want to control the built-in LED (pin 13)
+  pinMode(LED_BUILTIN, OUTPUT);
+  //Initialize I2C
+  Wire.begin(MY_ADDR);
+  //Set callbacks for I2C interrupts
+  Wire.onReceive(receive);
+  Wire.onRequest(request);
+
 }
 
 void loop() {
 
+  //If there is data on the buffer, read it
+  if (msgLength > 0) {
+    if (offset==1) {
+    digitalWrite(LED_BUILTIN,instruction[0]);
+    }  
+    printReceived();
+    msgLength = 0;
+  }
+
+  desired_output = instruction[0]; //Find desired output
+
   switch (desired_output) {
     case 0:
-      desired_pos = {0,0};
+      desired_pos[0] = 0;
+      desired_pos[1] = 0;
       break;
     case 1:
-      desired_pos = {0, pi};
+      desired_pos[0] = 0;
+      desired_pos[1] = pi;
       break;
     case 2:
-      desired_pos = {pi, 0};
+      desired_pos[0] = pi;
+      desired_pos[1] = 0;
       break;
     case 3:
-      desired_pos = {pi, pi};
+      desired_pos[0] = pi;
+      desired_pos[1] = pi;
       break;
   }
   int i;
@@ -96,7 +127,7 @@ void loop() {
     pos_velo_rad_s[i] = delta_pos_rad[i] / 0.01; //gets instantaneous velocity of position compared to 10ms before
 
     //error for the feedback loop the desired - actual velocity.  
- 
+
     pos_error[i] = desired_pos[i] - pos_after_rad[i];
     integral_error[i] = integral_error[i] + pos_error[i] * ((float)desired_Ts_ms/1000);
     desired_velocity[i] = Kp_pos[i] * pos_error[i] + Ki_pos[i] * integral_error[i];
