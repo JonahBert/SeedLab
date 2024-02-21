@@ -1,3 +1,18 @@
+/*
+  Mini Project Problem Statement - Interface Computer Vision and Motor Control to relay binary messages.
+
+  This code implements a PI-controller to spin the wheels and hold them at a specific position. To 
+  communicate with the raspberry pi for marker detection, three separate function files are used. 
+
+  printReceived() reads the array so that it can communicate what has been received from the camera.
+  receive() is the interrupt handler for the I2C that reads the value on the Wire.
+  request() writes the desired value to the Wire.
+
+  To implement the code, we connected pins A4 and A5 on the Arduino to the I2C pins on the Raspberry Pi. We 
+  also had to ensure the pi was connected to ground on the arduino, which we did via the attached breadboard. 
+  
+*/
+
 #include <Wire.h>
 #define MY_ADDR 8
 // Global variables to be used for I2C communication
