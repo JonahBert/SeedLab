@@ -1,18 +1,3 @@
-/*
-  Mini Project Problem Statement - Interface Computer Vision and Motor Control to relay binary messages.
-
-  This code implements a PI-controller to spin the wheels and hold them at a specific position. To 
-  communicate with the raspberry pi for marker detection, three separate function files are used. 
-
-  printReceived() reads the array so that it can communicate what has been received from the camera.
-  receive() is the interrupt handler for the I2C that reads the value on the Wire.
-  request() writes the desired value to the Wire.
-
-  To implement the code, we connected pins A4 and A5 on the Arduino to the I2C pins on the Raspberry Pi. We 
-  also had to ensure the pi was connected to ground on the arduino, which we did via the attached breadboard. 
-  
-*/
-
 #include <Wire.h>
 #define MY_ADDR 8
 // Global variables to be used for I2C communication
@@ -30,11 +15,6 @@ const int BPIN1 = 5;  // B pin on motor 1
 const int BPIN2 = 6;  // B pin on motor 2
 int desired_output = 0;
 
-
-int motorCount[2] = {0,0}; //These are the encoder counts on the motors 1 & 2
-unsigned int pwm_duty_cycle[2] = {0,0}; //Duty cycle for motor 1
-float pos_velo_rad_s[2] = {0,0};//velocity array for motors 
-float desired_pos[2] = {0,0}; // desired motor position
 //The variables below should be set based on the battery voltage and desired postion.
 float battery_voltage = 7.78; // Battery voltage
 float desired_pos[2] = {0,0}; // desired motor position
@@ -124,11 +104,7 @@ void loop() {
   }
 
   desired_output = instruction[0]; //Find desired output
-
-
-
 //Case statement to parse through the value sent from the PI and update the desired postion according to that.
-
   switch (desired_output) {
     case 0:
       desired_pos[0] = 0;
@@ -159,21 +135,12 @@ void loop() {
     pos_velo_rad_s[i] = delta_pos_rad[i] / 0.01; //gets instantaneous velocity of position compared to 10ms before
 
     //error for the feedback loop the desired - actual velocity.  
-
-
-    pos_error[i] = desired_pos[i] - pos_after_rad[i];
-    integral_error[i] = integral_error[i] + pos_error[i] * ((float)desired_Ts_ms/1000);
-    desired_velocity[i] = Kp_pos[i] * pos_error[i] + Ki_pos[i] * integral_error[i];
-    error[i] = desired_velocity[i] - pos_velo_rad_s[i]; 
-    Voltage[i] = Kp[i] * error[i];
-
   //PI controller code using the P controller for velocity.
     pos_error[i] = desired_pos[i] - pos_after_rad[i]; //The error of the position
     integral_error[i] = integral_error[i] + pos_error[i] * ((float)desired_Ts_ms/1000); accumulation of position error
     desired_velocity[i] = Kp_pos[i] * pos_error[i] + Ki_pos[i] * integral_error[i]; // Desired velocity for P controller set by PI controller on position.
     error[i] = desired_velocity[i] - pos_velo_rad_s[i]; //error for P controller
     Voltage[i] = Kp[i] * error[i]; // Voltage set from error and P controller.
-
 
     //If the voltage is less than 0 then motor direction is changed. 
     if (Voltage[i] > 0) digitalWrite(7+i,HIGH);

@@ -1,9 +1,4 @@
-#Mini Project
-'''
-This program continuously takes pictures while running an aruco detection algorithm. It calculates which quadrant of the camera frame those
-markers lie in and uses the averages of the detected quadrants. It displays the quadrant on the LCD screen using threading and then sends 
-an integer to address 8 using i2c
-'''
+#Mini Project: Detect quadrant the marker is in, display on LCD using threading, send data to arduino
 import threading
 import queue
 import board
