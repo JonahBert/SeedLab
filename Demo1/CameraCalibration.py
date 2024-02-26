@@ -38,7 +38,6 @@ for fname in images:
         cv2.imshow('img',img)
         cv2.waitKey(500)
 
-cv2.destroyAllWindows()
 
 ######################
 #Calibration
@@ -52,3 +51,23 @@ ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.sh
 img = cv2.imread('left12.jpg')
 h,  w = img.shape[:2]
 newcameramtx, roi=cv2.getOptimalNewCameraMatrix(mtx,dist,(w,h),1,(w,h))
+
+# undistort
+dst = cv2.undistort(img, mtx, dist, None, newcameramtx)
+# crop the image
+x,y,w,h = roi
+dst = dst[y:y+h, x:x+w]
+cv2.imwrite('calibresult.png',dst)
+
+######################
+#Reporjection Error
+######################
+
+mean_error = 0
+for i in range(len(objpoints)):
+    imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, dist)
+    error = cv2.norm(imgpoints[i],imgpoints2, cv2.NORM_L2)/len(imgpoints2)
+    mean_error += error
+    print("total error: ", mean_error/len(objpoints))
+
+cv2.destroyAllWindows()
