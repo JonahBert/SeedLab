@@ -1,4 +1,3 @@
-
 import numpy as np
 import cv2
 import glob
@@ -6,6 +5,13 @@ import glob
 #####################
 #Setup
 #####################
+
+# initialize the camera. If channel 0 doesn't work, try channel 1
+camera = cv2.VideoCapture(0)
+
+#set dimensions
+camera.set(cv2.CAP_PROP_FRAME_WIDTH,640)
+camera.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
 
 # termination criteria
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -39,11 +45,11 @@ for fname in images:
         cv2.waitKey(500)
 
 
-######################
-#Calibration
-######################
+        ######################
+        #Calibration
+        ######################
 
-ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
+        ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
 
 ######################
 #undistortion
