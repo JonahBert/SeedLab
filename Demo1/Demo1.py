@@ -10,7 +10,6 @@ from random import random
 from time import sleep
 import adafruit_character_lcd.character_lcd_rgb_i2c as character_lcd
 
-
 # Initialise I2C bus.
 i2cLCD = board.I2C()
 
@@ -32,10 +31,49 @@ camera = cv2.VideoCapture(0)
 #set dimensions
 camera.set(cv2.CAP_PROP_FRAME_WIDTH,640)
 camera.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
-#cv2.drawMarker(camera, (320,240), color=[0,0,0], markerType = cv2.MARKER_CROSS, thickness = 1)
-quadrant = 0
-prevQuadrant = 0
 
+def Calibrate(camera):
+    # termination criteria
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+    
+    # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
+    objp = np.zeros((6*7,3), np.float32)
+    objp[:,:2] = np.mgrid[0:7,0:6].T.reshape(-1,2)
+    
+    # Arrays to store object points and image points from all the images.
+    objpoints = [] # 3d point in real world space
+    imgpoints = [] # 2d points in image plane.
+    
+    #images = glob.glob('*.jpg')
+    
+    #for fname in images:
+    while True:
+        #img = cv2.imread(fname)
+        ret, frame = camera.read()
+        gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+        cv2.imshow("Overlay", gray)
+        
+        # Find the chess board corners
+        ret, corners = cv2.findChessboardCorners(gray, (7,6),None)
+        
+        # If found, add object points, image points (after refining them)
+        if ret == True:
+            objpoints.append(objp)
+            cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
+            imgpoints.append(corners)
+
+            # Draw and display the corners
+            cv2.drawChessboardCorners(frame, (7,6), corners,ret)
+            cv2.imshow('img',frame)
+            cv2.waitKey(500)
+
+
+            ######################
+            #Calibration
+            ######################
+
+            ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
+            return mtx, dist, rvecs, tvecs
 def writeToLCD():
     # Initialize LCD
     lcd_columns = 16
@@ -65,16 +103,21 @@ def writeToLCD():
             lcd.clear()
             lcd.message = message
 
+#wait for key, then calibrate camera
+mtx, dist, calRvecs, calTvecs = Calibrate(camera)
+
 #start conditional            
 myThread = threading.Thread(target=writeToLCD,args=())
 myThread.start()
+
+#cv2.drawMarker(camera, (320,240), color=[0,0,0], markerType = cv2.MARKER_CROSS, thickness = 1)
+quadrant = 0
+prevQuadrant = 0
 
 while True:
     # Marker Detection currently simulated by inputting an integer
     ret, frame = camera.read()
     grey = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY) # Make the image greyscale for ArUco detection
-    #cv2.line(grey, (320,480), (320,0), color = [0,0,0])
-    #cv2.line(grey, (0,240), (640,240), color = [0,0,0])
     cv2.imshow("overlay",grey)
     #take pictures until keypress
     k = cv2.waitKey(1) & 0xFF
@@ -82,46 +125,16 @@ while True:
         break
     #detect markers
     corners,ids,rejected = aruco.detectMarkers(grey,aruco_dict)
-    quadrant = 0
-    if corners is not None:
-        detected = False
-        #itirate through each point recorded in corners
-        for i in range(len(corners)):
-            markerDetects = corners[i]
-            if len(markerDetects == 4):
-                #find center of the marker
-                newCorners = corners[0][0]
-                xCoord = (newCorners[0][0] + newCorners[1][0] + newCorners[2][0] + newCorners[3][0]) / 4
-                yCoord = (newCorners[0][1] + newCorners[1][1] + newCorners[2][1] + newCorners[3][1]) / 4
-                xtot = xCoord
-                ytot = yCoord
-                detected = True
-        if detected == True:
-        #Quadrant 1 Coordinate top right pixels (>320,<240) doesnt work
-            if (xtot >= 320 and ytot <= 240):
-                quadrant = 1
-            #Quadrant 2 Coordinate top Left pixels (<320, <240)
-            elif (xtot <= 320 and ytot <= 240):
-                quadrant = 2
-            #Quadrant 3 Coordinate bottom left pixels (<320, >240)
-            elif (xtot <= 320 and ytot >= 240):
-                quadrant = 3
-            #Quadrant 4 Coordinate bottom right pixels (>320, >240)
-            elif (xtot >= 320 and ytot >= 240):
-                quadrant = 4
-    # Send it to the thread and arduino if quadrant has changed
-    if quadrant != prevQuadrant:
-        #q.queue.clear() #Need to clear the queue to make it less laggy
-        prevQuadrant = quadrant
-        q.put(quadrant)
-        #quadrent = 0 means marker is not detected, only send if marker is found
-        if quadrant <= 4 and quadrant >= 1:
-            #arduino is expecting quadrants labled 0-3 instead of 1-4
-            command = quadrant - 1
-            try:
-                #ask the arduino to take on encoder reading
-                i2cARD.write_byte_data(ARD_ADDR,0,command)
-            except IOError:
-                print("Could not write data to the to the Arduino.")
-            
+    #itirate through each point recorded in corners
+    for i in range(len(corners)):
+        markerDetects = corners[i]
+        if len(markerDetects == 4):
+            #find center of the marker
+            newCorners = corners[0][0]
+            markerLength = abs(newCorners[0][0] - newCorners[1][0])
+    rvecs, tvecs = aruco.estimatePoseSingleMarkers(corners,markerLength,mtx, dist, rvecs, tvecs)
+    print(rvecs)
+    print(tvecs)
+
+
 
