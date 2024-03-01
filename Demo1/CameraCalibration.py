@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import glob
+from time import sleep
 
 #####################
 #Setup
@@ -8,6 +9,11 @@ import glob
 
 # initialize the camera. If channel 0 doesn't work, try channel 1
 camera = cv2.VideoCapture(0)
+
+#check if camera is working
+if not camera.isOpened():
+    print("Error: Could not open camera.")
+
 
 #set dimensions
 camera.set(cv2.CAP_PROP_FRAME_WIDTH,640)
@@ -24,11 +30,27 @@ objp[:,:2] = np.mgrid[0:7,0:6].T.reshape(-1,2)
 objpoints = [] # 3d point in real world space
 imgpoints = [] # 2d points in image plane.
  
-#images = glob.glob('*.jpg')
- 
-#for fname in images:
-while True:
-    #img = cv2.imread(fname)
+#establish folder path
+folderName = '/home/seedlab/Demo1/CalibrationImgs/'
+
+#take 10 images for test patterns
+for i in range(0,10):
+    #sleep so time to move board
+    sleep(1)
+    ret, image = camera.read()
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    fileName = folderName + 'Image' + str(i) + '.png'
+    print(fileName)
+    try:
+        cv2.imwrite(fileName, image)
+    except:
+        print("Could not save " + fileName)
+        pass
+
+images = glob.glob(folderName + '*.png')
+
+for fname in images:
+    img = cv2.imread(fname)
     ret, frame = camera.read()
     gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
     cv2.imshow("Overlay", gray)
@@ -46,39 +68,36 @@ while True:
         cv2.drawChessboardCorners(frame, (7,6), corners,ret)
         cv2.imshow('img',frame)
         cv2.waitKey(500)
-
-
-        ######################
-        #Calibration
-        ######################
-
-        ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
         break
+
+######################
+#Calibration
+######################
+ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
 
 ######################
 #undistortion
 ######################
-img = cv2.imread('left12.jpg')
+""" img = cv2.imread('left12.jpg')
 hw = img.shape[:2]
-newcameramtx, roi=cv2.getOptimalNewCameraMatrix(mtx,dist,(w,h),1,(w,h))
+newcameramtx, roi=cv2.getOptimalNewCameraMatrix(mtx,dist,(w,h),1,(w,h)) """
 
-# undistort
+""" # undistort
 dst = cv2.undistort(img, mtx, dist, None, newcameramtx)
 # crop the image
 x,y,w,h = roi
 dst = dst[y:y+h, x:x+w]
-cv2.imwrite('calibresult.png',dst)
+cv2.imwrite('calibresult.png',dst) """
 
 ######################
 #Reporjection Error
 ######################
 
-mean_error = 0
+""" mean_error = 0
 for i in range(len(objpoints)):
     imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, dist)
     error = cv2.norm(imgpoints[i],imgpoints2, cv2.NORM_L2)/len(imgpoints2)
     mean_error += error
-    print("total error: ", mean_error/len(objpoints))
+    print("total error: ", mean_error/len(objpoints)) """
 
 cv2.destroyAllWindows()
-
