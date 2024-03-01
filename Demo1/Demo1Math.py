@@ -34,6 +34,8 @@ camera.set(cv2.CAP_PROP_FRAME_WIDTH,640)
 camera.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
 centerX = 640//2
 centerY = 480//2
+#diagonalFOV = 68.5
+#horizontalFOV = 2*arctan( tan( (68.5/2) * 640/ sqrt( (640^2) + (480)^2) )) = fullFOV
 fullFOV = 57.154316234
 halfFOV = fullFOV / 2
 
