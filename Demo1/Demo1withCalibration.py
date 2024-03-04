@@ -90,10 +90,13 @@ def Calibrate(camera):
     ######################
     #check if calibration works, throw exception if it doesnt
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
+    if ret == False:
+        print("Calibration failed")
+        return  
     print(mtx)
     print(rvecs)
     print(tvecs)
-    return mtx, dist, rvecs, tvecs
+    return mtx, dist
 
 def writeToLCD():
     # Initialize LCD
@@ -114,7 +117,7 @@ def writeToLCD():
             lcd.message = message
 
 #wait for key, then calibrate camera
-mtx, dist, calRvecs, calTvecs = Calibrate(camera)
+mtx, dist = Calibrate(camera)
 
 #start conditional            
 myThread = threading.Thread(target=writeToLCD,args=())
@@ -140,7 +143,9 @@ while True:
     corners,ids,rejected = aruco.detectMarkers(grey,aruco_dict)
     if corners is not None:
         #itirate through each point recorded in corners
-        for i in range(len(corners)):
-            rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(corners[i], markerLength, mtx, dist, calRvecs, calTvecs)
-            print(rvecs)
-            print(tvecs)
+        #for i in range(len(corners)):
+        rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(corners, markerLength, mtx, dist)
+        rMatrix, _ = cv2.Rodrigues(rvecs)
+        
+
+        
