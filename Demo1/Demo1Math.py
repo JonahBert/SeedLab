@@ -34,7 +34,7 @@ camera.set(cv2.CAP_PROP_FRAME_WIDTH,640)
 camera.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
 centerX = 640//2
 centerY = 480//2
-fullFOV = 57.154316234
+fullFOV = 53.1 #Changed Field of View to be within tolerance
 halfFOV = fullFOV / 2
 
 #cv2.drawMarker(camera, (320,240), color=[0,0,0], markerType = cv2.MARKER_CROSS, thickness = 1)
