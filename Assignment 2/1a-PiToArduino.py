@@ -1,3 +1,10 @@
+#1a-PiToArduino.py: 
+#Authors: Hunter Burnham, Joseph Kirby
+#Resources: N/A
+#Date Created: 1/25/2024
+#Date Completed: 2/8/2024
+#Description: Pi send a string to the Arduino, and the Arduino displays the string characters followed by the ASCII codes.
+
 from smbus2 import SMBus
 from time import sleep
 
