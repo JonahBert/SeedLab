@@ -1,5 +1,5 @@
 """
-Demo 1: Obtain camera matrix and distortion ceofficients (CODE NOT USED FOR DEMO 1)
+Demo 1: Find angle of marker from camera axis using pose estimation (CODE NOT USED FOR DEMO 1)
 Authors: Hunter Burnham, Joseph Kirby, Jonah Bertolino
 Resources:  Open cv aruco pose estimation tutorial https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html
             Translation vector wikipedia https://en.wikipedia.org/wiki/Translation_(geometry)
