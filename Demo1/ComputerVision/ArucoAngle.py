@@ -46,6 +46,7 @@ camera.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
 centerX = 640//2
 centerY = 480//2
 
+#according to datasheet the field of view is 68.5 Degrees diagonally
 #initialize Fov
 fullFOV = 53.1
 halfFOV = fullFOV / 2
@@ -80,11 +81,12 @@ myThread.start()
 prevAngle = 0
 
 while True:
-    # Marker Detection currently simulated by inputting an integer
+    #take picture
     ret, frame = camera.read()
     grey = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY) # Make the image greyscale for ArUco detection
     cv2.imshow("overlay",grey)
-    #take pictures until keypress
+
+    #run until keypress
     k = cv2.waitKey(1) & 0xFF
     if k == ord("q"):
         break
@@ -102,35 +104,26 @@ while True:
                 #sets the variable newCorners to all of the corner values from the aruco marker when it is detected.
                 newCorners = corners[0][0]
                 #The xCoord variable stores all of the x value coordinates and divides them by 4 to get the center x value.
-                xCoord = (newCorners[0][0] + newCorners[1][0] + newCorners[2][0] + newCorners[3][0]) / 4
+                xMarker = (newCorners[0][0] + newCorners[1][0] + newCorners[2][0] + newCorners[3][0]) / 4
                 #The yCoord variable stores all of the y value coordinates and divides them by 4 to get the center y value.
-                yCoord = (newCorners[0][1] + newCorners[1][1] + newCorners[2][1] + newCorners[3][1]) / 4
-                #initialize these variables into new ones to incorportate the difference between the center of the camera and the center of the aruco marker
-                xMarker = xCoord
-                yMarker = yCoord
-                #The deltaX function takes the difference between the center of the aruco marker and the center of the camera to get the total distance between them.
-                deltaX = xMarker - centerX
-                #The deltaY function takes the difference between the center of the aruco marker and the center of the camera to get the total distance between them.
-                deltaY = yMarker - centerY
+                yMarker = (newCorners[0][1] + newCorners[1][1] + newCorners[2][1] + newCorners[3][1]) / 4
 
-                #according to datasheet the field of view is 68.5 Degrees diagonally
+                #The deltaX variable takes the difference between the center of the aruco marker and the center of the camera to get the total distance between them.
+                deltaX = xMarker - centerX
 
                 #The angle calculation of the arcuo marker to the center of the camera.
                 #We are taking the half of the fov to split the screen into positive and negative and using the ratio between the difference of X and the center to calculate the total angle away from the center in the x direction. 
                 angle = -1 * halfFOV * (deltaX / centerX)
                 angle = round(angle,3)
 
-    #if new angle within a 0.05 of the previous, add to the qeue
+    #if new angle within a 0.05 of the previous, add to the queue
     #we dont want screen constantly refreshing
     if angle <= prevAngle - 0.05 or angle >= prevAngle + 0.05:
         #clear queue if angle changes
         q.queue.clear()
         q.put(angle)
         prevAngle = angle
-
-                                       
-
-    
+   
 cv2.destroyAllWindows()
 camera.release()
     
