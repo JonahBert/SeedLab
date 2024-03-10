@@ -1,6 +1,6 @@
-This folder contains all of the code and content used for Demo 1. 
-The purpose of Demo 1 is to accomplish three tasks. The first task is to detect the angle of an Aruco Marker from the camera. 
-The second task to is to get the robot to drive straight, and the last task is to get the robot to rotate and certain amount of degrees.
+This folder contains all of the code and content used for the MiniProject. 
+The purpose of the MiniProject is to detect an aruco marker in 4 different quadrants of the camera display.
+Once we detect the quadrant the aruco marker is in, we display the position on the LCD screen which then tells the motor wheels to move in a specific way.
 
 A short description of each piece of code is provided below:
 1. CameraCalibration.py: Calibrates the camera.
