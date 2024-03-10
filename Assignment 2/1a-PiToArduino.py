@@ -3,7 +3,7 @@
 #Resources: N/A
 #Date Created: 1/25/2024
 #Date Completed: 2/8/2024
-#Description: Asks the user for an string input and offset.
+#Description: Asks the user for an string input, then sends it to the Arduino.
 
 from smbus2 import SMBus
 from time import sleep
