@@ -2,9 +2,12 @@
 Demo 1: Obtain camera matrix and distortion ceofficients (CODE NOT USED FOR DEMO 1)
 Authors: Hunter Burnham, Joseph Kirby, Jonah Bertolino
 Resources: Open cv camera calibration tutorial https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html
-Date Started: 2/28/2024
+Date Started: 3/3/2024
 Date completed: 3/10/2024
-Description:
+Description: Obtain camera matrix by taking 10 pictures of a chessboard, running the find chess board corners function, storing the 
+    image coordinates and object coordinates, then running the camera calibration function from open cv. Save the resultant matrix and distortion
+    vectors as numpy areas in the current directory. We were not able to get consistent calibration which made this method of completing demo 1
+    not feasible.
 """
 import numpy as np
 import cv2
@@ -23,7 +26,7 @@ camera.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
  
 # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
-objp = np.zeros((6*7,3), np.float32)
+objp = np.zero/s((6*7,3), np.float32)
 objp[:,:2] = np.mgrid[0:7,0:6].T.reshape(-1,2)
  
 # Arrays to store object points and image points from all the images.
@@ -72,12 +75,13 @@ ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.sh
 if ret == False:
     print("Calibration failed") 
 
+#Print mtx, dist, and x frame of view (fovX) to check to see if calibration makes sense
 print(mtx)
 print(dist)
 fovX = 2*math.atan(640/(2*mtx[0][0]))*180/math.pi
-
 print(fovX)
-print(count)
+
+#save necessary arrays
 np.save('CameraMatrix.npy',mtx)
 np.save('distortionVec.npy',dist)
 

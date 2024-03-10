@@ -1,9 +1,16 @@
-#Demo 1: Detect quadrant the marker is in, display on LCD using threading, send data to arduino
+"""
+Demo 1: Obtain camera matrix and distortion ceofficients (CODE NOT USED FOR DEMO 1)
+Authors: Hunter Burnham, Joseph Kirby, Jonah Bertolino
+Resources:  Open cv aruco pose estimation tutorial https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html
+            Translation vector wikipedia https://en.wikipedia.org/wiki/Translation_(geometry)
+Date Started: 3/8/2024
+Date completed: 3/10/2024
+Description: Using camera matrix and 
+"""
 import threading
 import queue
 import board
 import cv2
-import glob
 import math as m
 from cv2 import aruco
 import numpy as np
@@ -34,37 +41,41 @@ camera = cv2.VideoCapture(0)
 camera.set(cv2.CAP_PROP_FRAME_WIDTH,640)
 camera.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
 
-#load in camera matrix and distortion vectors
+#load in camera matrix and distortion vectors obtained from CameraCalibration.py
 mtx = np.load('CameraMatrix.npy')
 dst = np.load('distortionVec.npy')
-print(mtx)
+
 def writeToLCD():
     # Initialize LCD
     lcd_columns = 16
     lcd_rows = 2
     lcd = character_lcd.Character_LCD_RGB_I2C(i2cLCD, lcd_columns, lcd_rows)
     #intialize message
-    message = "No markers"
-    msgPre = "Marker at angle:\n"
-    lcd.message = message
-    
+    message = "No Markers"
+    lcd.message = message 
     while True:
         if not q.empty():
-            #get angle from qeue
             angle = q.get()
-            message = msgPre + str(angle)
-            lcd.clear()
-            lcd.message = message
+            #no markers if angle = 1000
+            if angle == 1000:
+                #clear lcd if no angle detected
+                lcd.clear()
+                message = "No Markers"
+                lcd.message = message
+            else:
+                #display andle
+                message = "Marker at angle:\n" + str(angle)
+                lcd.message = message
 
 
 #start conditional            
 myThread = threading.Thread(target=writeToLCD,args=())
 myThread.start()
 
-#cv2.drawMarker(camera, (320,240), color=[0,0,0], markerType = cv2.MARKER_CROSS, thickness = 1)
 
-###physical marker length in m
+#physical marker length in m
 markerLength = 5/100
+prevAngle = 0
 
 while True:
     # Marker Detection currently simulated by inputting an integer
@@ -79,21 +90,28 @@ while True:
     
     #detect markers
     corners,ids,rejected = aruco.detectMarkers(grey,aruco_dict)
+
+    #angle of 1000 is attributed to no marker detected for LCD purposes
+    angle = 1000
+
     if corners is not None:
         #itirate through each point recorded in corners
         #for i in range(len(corners)):
         aruco.drawDetectedMarkers(grey,corners,ids)
         rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(corners, markerLength, mtx, dst)
-        #print(rvecs)
-        #print(tvecs)
         if tvecs is not None:
-            #tmtx = cv2.Rodrigues(tvecs)
-            #alpha = np.arctan2(rmtx[0][1][0],rmtx[0][0][0])*180/m.pi
-            #beta = np.arctan2(-rmtx[0][2][0],m.sqrt(rmtx[0][2][1]**2 + rmtx[0][2][2]**2)) *180/m.pi
-            #gamma = np.arctan2(rmtx[0][2][1],rmtx[0][2][2])*180/m.pi
-            #print(gamma)
-            angle = np.arctan2(tvecs[0][0][0], tvecs[0][0][2])*180/m.pi
+            #use x and z component of translation vector to compute desired angle
+            angle = np.arctan2(tvecs[0][0][0], tvecs[0][0][2]) * 180 / m.pi
             print(angle)
+
+    #if new angle within a 0.05 of the previous, add to the qeue
+    #we dont want screen constantly refreshing
+    if angle <= prevAngle - 0.05 or angle >= prevAngle + 0.05:
+        #clear queue if angle changes
+        q.queue.clear()
+        q.put(angle)
+        prevAngle = angle
+
         
 cv2.destroyAllWindows()
 camera.release()
