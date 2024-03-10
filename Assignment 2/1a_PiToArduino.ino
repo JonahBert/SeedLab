@@ -1,5 +1,12 @@
-#include <Wire.h>
-#define MY_ADDR 8
+// 1a_PiToArduino.ino: Arduino Side of Assignment 1a code
+// Authors: Hunter Burnham, Joseph Kirby
+// Resources: N/A
+// Date Created: 1/25/2024
+// Date Completed: 2/8/2024 
+// Description: 
+
+// include <Wire.h>
+// define MY_ADDR 8
 // Global variables to be used for I2C communication
 volatile uint8_t offset = 0;
 

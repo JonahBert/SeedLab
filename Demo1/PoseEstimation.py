@@ -5,7 +5,9 @@ Resources:  Open cv aruco pose estimation tutorial https://docs.opencv.org/4.x/d
             Translation vector wikipedia https://en.wikipedia.org/wiki/Translation_(geometry)
 Date Started: 3/8/2024
 Date completed: 3/10/2024
-Description: Using camera matrix and 
+Description: Using camera matrix and distortion coefficients from cameraCalibration.py to complete the task for demo 1 using the 
+    aruco pose estimation function form open cv. This outputs a translation vector that should be able to be used to compute the angle from the 
+    camera axis. This method was deemed infeasible due to our inability to get consistent camera calibration
 """
 import threading
 import queue
