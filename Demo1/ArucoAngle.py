@@ -4,7 +4,8 @@ Authors: Joseph Kirby, Jonah Bertolino, Hunter Burnham
 Resources: https://mavicpilots.com/threads/computing-horizontal-field-of-view-fov-from-diagonal-fov.140386/ 
 Date Started: 2/28/2024
 Date completed: 3/10/2024
-Description: Within this file, we are taking our aruco detection from previous projects and using it to now calculate the angle from the center of the camera in the x direction.
+Description: Within this file, we are taking our aruco detection from previous projects and using it to now calculate the angle from the center of the camera in the 
+x direction.
 We are integrating both the LCD screen threading, queue, and board to display the camera angles from the camera detecting the aruco marker.
 We configured the angle to be positive when it is on the left of the screen and oppositely when it is on the right being a negative angle.
 The angles we have calculated are in degrees.
