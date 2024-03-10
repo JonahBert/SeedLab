@@ -22,6 +22,7 @@ camera = cv2.VideoCapture(0)
 camera.set(cv2.CAP_PROP_FRAME_WIDTH,640)
 camera.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
 
+#Calibrate Camera, modified code from open cv tutorial
 # termination criteria
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
  
@@ -73,7 +74,15 @@ while count < 10:
 ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
 
 if ret == False:
-    print("Calibration failed") 
+    print("Calibration failed")
+
+#compute error (should be low, code from open cv tutorial)
+mean_error = 0
+for i in range(len(objpoints)):
+    imgpoints2, _ = cv.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, dist)
+    error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2)/len(imgpoints2)
+    mean_error += error
+print( "total error: {}".format(mean_error/len(objpoints)) )
 
 #Print mtx, dist, and x frame of view (fovX) to check to see if calibration makes sense
 print(mtx)
