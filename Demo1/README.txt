@@ -14,3 +14,6 @@ A short description of each piece of code is provided below:
 9. TURN_ROBOT.ino: 
 10. Turn_and_Go.ino: 
 11. anglety.ino:
+
+Resources used for Demo 1:
+1. https://mavicpilots.com/threads/computing-horizontal-field-of-view-fov-from-diagonal-fov.140386/
