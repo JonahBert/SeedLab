@@ -5,7 +5,7 @@ Py group completed four different tasks, in Task 1 the Pi sent a string to the A
 
 A short description of each file is provided below:
 
-readme.md: Contains a description of Assignment 2 and all tasks completed. Also contains a short description on every file in Assignment 2 and all resources used.
+README.md: Contains a description of Assignment 2 and all tasks completed. Also contains a short description on every file in Assignment 2 and all resources used.
 
 1a-PiToArduino.py: Asks the user for an string input, then sends it to the Arduino.
 
