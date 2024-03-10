@@ -1,9 +1,9 @@
-This repository is for the Mini Project, which integrates Computer Vision and Motor Control.
-In this repo are different codes in Arduino, Python, and MATLAB, which implement a PI controller
-on our robot to show a binary message that represents the quadrant in which an aruco marker is detected.
-There is a MATLAB simulation of our motor, as well as well-defined functions that the Arduino code needs.
-
-
-To use GitHub on the Pi computer 
 Username: JonahBert
 Password: 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
+
+Assignment 2: Various Python tasks and Arduino tasks outlined in assignment documents 
+
+MiniProject: Motor control mini project; detect the quadrant that the marker is in, display on the LCD screen, and send information from the pi to the Arduino 
+  using 12c, then turn the wheels to show the corresponding code [1,0] [1,1], etc
+
+Demo 1: Detect the angle from the camera axis where a marker appears, turn the robot a specified number of degrees, and then have the robot drive straight a specified   number of feet.
