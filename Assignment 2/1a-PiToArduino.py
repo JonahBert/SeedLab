@@ -1,4 +1,4 @@
-#1a-PiToArduino.py: 
+#1a-PiToArduino.py: Assignment 1a code
 #Authors: Hunter Burnham, Joseph Kirby
 #Resources: N/A
 #Date Created: 1/25/2024
