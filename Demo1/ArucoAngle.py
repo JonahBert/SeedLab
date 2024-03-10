@@ -1,4 +1,11 @@
-#Mini Project: Detect quadrant the marker is in, display on LCD using threading, send data to arduino
+"""
+Demo 1: Detect angle of aruco markers (CODE USED FOR DEMO 1)
+Authors: Joseph Kirby, Jonah Bertolino, Hunter Burnham
+Resources: 
+Date Started: 2/28/2024
+Date completed: 3/10/2024
+Description:
+"""
 import threading
 import queue
 import board
@@ -34,12 +41,10 @@ camera.set(cv2.CAP_PROP_FRAME_WIDTH,640)
 camera.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
 centerX = 640//2
 centerY = 480//2
-fullFOV = 57.154316234
-halfFOV = fullFOV / 2
 
-#cv2.drawMarker(camera, (320,240), color=[0,0,0], markerType = cv2.MARKER_CROSS, thickness = 1)
-#global message variable for threading
-message = "No markers"
+#initialize Fov
+fullFOV = 53.1
+halfFOV = fullFOV / 2
 
 def writeToLCD():
     # Initialize LCD
@@ -47,32 +52,28 @@ def writeToLCD():
     lcd_rows = 2
     lcd = character_lcd.Character_LCD_RGB_I2C(i2cLCD, lcd_columns, lcd_rows)
     #intialize message
-    message = "No markers"
-    lcd.message = message
-    
+    message = "No Markers"
+    lcd.message = message 
     while True:
         if not q.empty():
-            #get quadrant from qeue
-            quadrant = q.get()
-            
-            #check quadrant
-            if quadrant == 0:#zero means no markers detected
-                message = "No markers"
-                
-            elif quadrant <= 4 and quadrant >= 1:
-                #convert to binary string and subtract 1 to get into correct form
-                binaryQuad = format(quadrant - 1,'02b')
-                message = f"Desired Output:\n[{binaryQuad[0]},{binaryQuad[1]}]"
-                
-            else:#this shouldnt happen
-                message = "error"
-                
-            lcd.clear()
-            lcd.message = message
+            angle = q.get()
+            #no markers if angle = 1000
+            if angle == 1000:
+                #clear lcd if no angle detected
+                lcd.clear()
+                message = "No Markers"
+                lcd.message = message
+            else:
+                #display andle
+                message = "Marker at angle:\n" + str(angle)
+                lcd.message = message
 
 #start conditional            
 myThread = threading.Thread(target=writeToLCD,args=())
 myThread.start()
+
+#declare variables
+prevAngle = 0
 
 while True:
     # Marker Detection currently simulated by inputting an integer
@@ -83,12 +84,13 @@ while True:
     k = cv2.waitKey(1) & 0xFF
     if k == ord("q"):
         break
+    
     #detect markers
     corners,ids,rejected = aruco.detectMarkers(grey,aruco_dict)
+    angle = 1000
     
     #if marker is detected, calculate center
     if corners is not None:
-        detected = False
         #itirate through each point recorded in corners
         for i in range(len(corners)):
             markerDetects = corners[i]
@@ -99,7 +101,6 @@ while True:
                 yCoord = (newCorners[0][1] + newCorners[1][1] + newCorners[2][1] + newCorners[3][1]) / 4
                 xMarker = xCoord
                 yMarker = yCoord
-                detected = True
                 deltaX = xMarker - centerX
                 deltaY = yMarker - centerY
 
@@ -108,16 +109,16 @@ while True:
                 #The horizontal degree value is 57.154316234 Degrees
 
                 #Left side of the screen
-                
-                angle = halfFOV * (deltaX / centerX)
-                print("Angle is: ", angle)
-                    
-                                       
-                
-                
-    else:
-        #no markers detected
-        angle = 0
+                angle = -1 * halfFOV * (deltaX / centerX)
+                angle = round(angle,3)
+
+    #if new angle within a 0.05 of the previous, add to the qeue
+    #we dont want screen constantly refreshing
+    if angle <= prevAngle - 0.05 or angle >= prevAngle + 0.05:
+        #clear qeue if angle changes
+        q.queue.clear()
+        q.put(angle)
+        prevAngle = angle
 
     
 
