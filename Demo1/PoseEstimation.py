@@ -1,15 +1,23 @@
-#Mini Project: Detect quadrant the marker is in, display on LCD using threading, send data to arduino
+"""
+Demo 1: Obtain camera matrix and distortion ceofficients (CODE NOT USED FOR DEMO 1)
+Authors: Hunter Burnham, Joseph Kirby, Jonah Bertolino
+Resources:  Open cv aruco pose estimation tutorial https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html
+            Translation vector wikipedia https://en.wikipedia.org/wiki/Translation_(geometry)
+Date Started: 3/8/2024
+Date completed: 3/10/2024
+Description: Using camera matrix and 
+"""
 import threading
 import queue
 import board
 import cv2
+import math as m
 from cv2 import aruco
 import numpy as np
 from smbus2 import SMBus
 from random import random
 from time import sleep
 import adafruit_character_lcd.character_lcd_rgb_i2c as character_lcd
-
 
 # Initialise I2C bus.
 i2cLCD = board.I2C()
@@ -32,11 +40,10 @@ camera = cv2.VideoCapture(0)
 #set dimensions
 camera.set(cv2.CAP_PROP_FRAME_WIDTH,640)
 camera.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
-centerX = 640//2
-centerY = 480//2
-#fullFOV = 57.154316234 - 4.67
-fullFOV = 53.1
-halfFOV = fullFOV / 2
+
+#load in camera matrix and distortion vectors obtained from CameraCalibration.py
+mtx = np.load('CameraMatrix.npy')
+dst = np.load('distortionVec.npy')
 
 def writeToLCD():
     # Initialize LCD
@@ -51,18 +58,23 @@ def writeToLCD():
             angle = q.get()
             #no markers if angle = 1000
             if angle == 1000:
+                #clear lcd if no angle detected
                 lcd.clear()
                 message = "No Markers"
                 lcd.message = message
             else:
+                #display andle
                 message = "Marker at angle:\n" + str(angle)
                 lcd.message = message
+
 
 #start conditional            
 myThread = threading.Thread(target=writeToLCD,args=())
 myThread.start()
 
-#declare variables
+
+#physical marker length in m
+markerLength = 5/100
 prevAngle = 0
 
 while True:
@@ -70,6 +82,7 @@ while True:
     ret, frame = camera.read()
     grey = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY) # Make the image greyscale for ArUco detection
     cv2.imshow("overlay",grey)
+    
     #take pictures until keypress
     k = cv2.waitKey(1) & 0xFF
     if k == ord("q"):
@@ -77,42 +90,28 @@ while True:
     
     #detect markers
     corners,ids,rejected = aruco.detectMarkers(grey,aruco_dict)
+
+    #angle of 1000 is attributed to no marker detected for LCD purposes
     angle = 1000
-    
-    #if marker is detected, calculate center
+
     if corners is not None:
-        detected = False
         #itirate through each point recorded in corners
-        for i in range(len(corners)):
-            markerDetects = corners[i]
-            if len(markerDetects == 4):
-                #find center of the marker
-                newCorners = corners[0][0]
-                xCoord = (newCorners[0][0] + newCorners[1][0] + newCorners[2][0] + newCorners[3][0]) / 4
-                yCoord = (newCorners[0][1] + newCorners[1][1] + newCorners[2][1] + newCorners[3][1]) / 4
-                xMarker = xCoord
-                yMarker = yCoord
-                detected = True
-                deltaX = xMarker - centerX
-                deltaY = yMarker - centerY
+        #for i in range(len(corners)):
+        aruco.drawDetectedMarkers(grey,corners,ids)
+        rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(corners, markerLength, mtx, dst)
+        if tvecs is not None:
+            #use x and z component of translation vector to compute desired angle
+            angle = np.arctan2(tvecs[0][0][0], tvecs[0][0][2]) * 180 / m.pi
+            print(angle)
 
-                #Use similar triangles to calculate distance away given angle
-                #according to datasheet the field of view is 68.5 Degrees diagonally
-                #The horizontal degree value is 57.154316234 Degrees
-
-                #Left side of the screen
-                angle = halfFOV * (deltaX / centerX)
-                angle = round(angle,3)
-                
+    #if new angle within a 0.05 of the previous, add to the qeue
+    #we dont want screen constantly refreshing
     if angle <= prevAngle - 0.05 or angle >= prevAngle + 0.05:
+        #clear queue if angle changes
+        q.queue.clear()
         q.put(angle)
         prevAngle = angle
 
-                                       
-
-    
+        
 cv2.destroyAllWindows()
 camera.release()
-    
-
-    
