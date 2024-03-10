@@ -3,7 +3,7 @@
 #Resources: N/A
 #Date Created: 1/25/2024
 #Date Completed: 2/8/2024
-#Description: Pi send a string to the Arduino, and the Arduino displays the string characters followed by the ASCII codes.
+#Description: Asks the user for an string input and offset.
 
 from smbus2 import SMBus
 from time import sleep
