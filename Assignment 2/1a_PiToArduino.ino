@@ -1,8 +1,8 @@
-// 1a_PiToArduino.ino: Arduino Side of 1a
-// Authors: 
-// Resources: 
-// Date Created: 
-// Date Completed: 
+// 1a_PiToArduino.ino: Arduino Side of Assignment 1a code
+// Authors: Hunter Burnham, Joseph Kirby
+// Resources: N/A
+// Date Created: 1/25/2024
+// Date Completed: 2/8/2024 
 // Description: 
 
 // include <Wire.h>
