@@ -12,7 +12,7 @@ Demo 1 Team 7 Minutes Week 2.docx: Summary of Demo 1 Week 2 meeting
 
 Demo1.mp4: Video of all demo 1 tasks submitted prior to demonstration
 
-Demo1Math.py: Finds the angle to the camera using math (USED IN DEMO 1)
+ArucoAngle.py: Uses the camera to detect the aruco marker, the angle away it is from the center in the x direction, and displays it onto the LCD screen (USED IN DEMO 1)
 
 CameraCalibration.py: obtain camera matrix and distotrtion coefficients using open cv chess board method, needs to be run before PoseEstimation can work (NOT USED FOR DEMO 1)
 
