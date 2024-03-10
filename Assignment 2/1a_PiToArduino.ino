@@ -1,5 +1,12 @@
-#include <Wire.h>
-#define MY_ADDR 8
+// 1a_PiToArduino.ino: Arduino Side of 1a
+// Authors: 
+// Resources: 
+// Date Created: 
+// Date Completed: 
+// Description: 
+
+// include <Wire.h>
+// define MY_ADDR 8
 // Global variables to be used for I2C communication
 volatile uint8_t offset = 0;
 
