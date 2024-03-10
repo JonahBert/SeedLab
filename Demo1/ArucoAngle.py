@@ -120,6 +120,11 @@ while True:
         q.put(angle)
         prevAngle = angle
 
+                                       
+
+    
+cv2.destroyAllWindows()
+camera.release()
     
 
     
