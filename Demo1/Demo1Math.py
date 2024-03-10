@@ -34,12 +34,9 @@ camera.set(cv2.CAP_PROP_FRAME_WIDTH,640)
 camera.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
 centerX = 640//2
 centerY = 480//2
-fullFOV = 53.1 #Changed Field of View to be within tolerance
+#fullFOV = 57.154316234 - 4.67
+fullFOV = 53.1
 halfFOV = fullFOV / 2
-
-#cv2.drawMarker(camera, (320,240), color=[0,0,0], markerType = cv2.MARKER_CROSS, thickness = 1)
-#global message variable for threading
-message = "No markers"
 
 def writeToLCD():
     # Initialize LCD
@@ -47,32 +44,26 @@ def writeToLCD():
     lcd_rows = 2
     lcd = character_lcd.Character_LCD_RGB_I2C(i2cLCD, lcd_columns, lcd_rows)
     #intialize message
-    message = "No markers"
-    lcd.message = message
-    
+    message = "No Markers"
+    lcd.message = message 
     while True:
         if not q.empty():
-            #get quadrant from qeue
-            quadrant = q.get()
-            
-            #check quadrant
-            if quadrant == 0:#zero means no markers detected
-                message = "No markers"
-                
-            elif quadrant <= 4 and quadrant >= 1:
-                #convert to binary string and subtract 1 to get into correct form
-                binaryQuad = format(quadrant - 1,'02b')
-                message = f"Desired Output:\n[{binaryQuad[0]},{binaryQuad[1]}]"
-                
-            else:#this shouldnt happen
-                message = "error"
-                
-            lcd.clear()
-            lcd.message = message
+            angle = q.get()
+            #no markers if angle = 1000
+            if angle == 1000:
+                lcd.clear()
+                message = "No Markers"
+                lcd.message = message
+            else:
+                message = "Marker at angle:\n" + str(angle)
+                lcd.message = message
 
 #start conditional            
 myThread = threading.Thread(target=writeToLCD,args=())
 myThread.start()
+
+#declare variables
+prevAngle = 0
 
 while True:
     # Marker Detection currently simulated by inputting an integer
@@ -83,8 +74,10 @@ while True:
     k = cv2.waitKey(1) & 0xFF
     if k == ord("q"):
         break
+    
     #detect markers
     corners,ids,rejected = aruco.detectMarkers(grey,aruco_dict)
+    angle = 1000
     
     #if marker is detected, calculate center
     if corners is not None:
@@ -108,17 +101,18 @@ while True:
                 #The horizontal degree value is 57.154316234 Degrees
 
                 #Left side of the screen
-                
                 angle = halfFOV * (deltaX / centerX)
-                print("Angle is: ", angle)
-                    
-                                       
+                angle = round(angle,3)
                 
-                
-    else:
-        #no markers detected
-        angle = 0
+    if angle <= prevAngle - 0.05 or angle >= prevAngle + 0.05:
+        q.put(angle)
+        prevAngle = angle
 
+                                       
+
+    
+cv2.destroyAllWindows()
+camera.release()
     
 
     
