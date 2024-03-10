@@ -3,7 +3,7 @@ During the course of Assignment 2, our group completed multiple objectives. Thes
 
 Py group completed four different tasks, in Task 1 the Pi sent a string to the Arduino, which led to the Arduino displaying a string of characters followed by ASCII codes. In Task 2 the user input a number between 0 and 100, which the Pi sent to the Arduino, leading the Arduino to add 100 to that number and sent it back to the Pi. The Pi then displayed the number on the LCD screen. In Task 3, we took a picture using the camera, converted it to grayscale, and then ran Aruco detection code. When no markers were foubd, the LCD screen displayed "No markers found." Otherwise, it displayed the ID of the Aruco marker. In addition, we also answered questions on how our code worked. In Task 4, we took a picture of colors.pdf on a different monitor using the camera. On this image, we performed morphological transformations and then displayed the detected shape using a contour.
 
-A short description of each piece of code is provided below:
+A short description of each file is provided below:
 
 readme.md: Contains a description of Assignment 2 and all tasks completed. Also contains a short description on every file in Assignment 2 and all resources used.
 
