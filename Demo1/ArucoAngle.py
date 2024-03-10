@@ -1,10 +1,13 @@
 """
 Demo 1: Detect angle of aruco markers (CODE USED FOR DEMO 1)
 Authors: Joseph Kirby, Jonah Bertolino, Hunter Burnham
-Resources: 
+Resources: https://mavicpilots.com/threads/computing-horizontal-field-of-view-fov-from-diagonal-fov.140386/ 
 Date Started: 2/28/2024
 Date completed: 3/10/2024
-Description:
+Description: Within this file, we are taking our aruco detection from previous projects and using it to now calculate the angle from the center of the camera in the x direction.
+We are integrating both the LCD screen threading, queue, and board to display the camera angles from the camera detecting the aruco marker.
+We configured the angle to be positive when it is on the left of the screen and oppositely when it is on the right being a negative angle.
+The angles we have calculated are in degrees.
 """
 import threading
 import queue
@@ -95,27 +98,31 @@ while True:
         for i in range(len(corners)):
             markerDetects = corners[i]
             if len(markerDetects == 4):
-                #find center of the marker
+                #sets the variable newCorners to all of the corner values from the aruco marker when it is detected.
                 newCorners = corners[0][0]
+                #The xCoord variable stores all of the x value coordinates and divides them by 4 to get the center x value.
                 xCoord = (newCorners[0][0] + newCorners[1][0] + newCorners[2][0] + newCorners[3][0]) / 4
+                #The yCoord variable stores all of the y value coordinates and divides them by 4 to get the center y value.
                 yCoord = (newCorners[0][1] + newCorners[1][1] + newCorners[2][1] + newCorners[3][1]) / 4
+                #initialize these variables into new ones to incorportate the difference between the center of the camera and the center of the aruco marker
                 xMarker = xCoord
                 yMarker = yCoord
+                #The deltaX function takes the difference between the center of the aruco marker and the center of the camera to get the total distance between them.
                 deltaX = xMarker - centerX
+                #The deltaY function takes the difference between the center of the aruco marker and the center of the camera to get the total distance between them.
                 deltaY = yMarker - centerY
 
-                #Use similar triangles to calculate distance away given angle
                 #according to datasheet the field of view is 68.5 Degrees diagonally
-                #The horizontal degree value is 57.154316234 Degrees
 
-                #Left side of the screen
+                #The angle calculation of the arcuo marker to the center of the camera.
+                #We are taking the half of the fov to split the screen into positive and negative and using the ratio between the difference of X and the center to calculate the total angle away from the center in the x direction. 
                 angle = -1 * halfFOV * (deltaX / centerX)
                 angle = round(angle,3)
 
     #if new angle within a 0.05 of the previous, add to the qeue
     #we dont want screen constantly refreshing
     if angle <= prevAngle - 0.05 or angle >= prevAngle + 0.05:
-        #clear qeue if angle changes
+        #clear queue if angle changes
         q.queue.clear()
         q.put(angle)
         prevAngle = angle
