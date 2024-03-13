@@ -29,6 +29,7 @@ unsigned int pwm_duty_cycle[2] = {0,0}; //Duty cycle for motor 1
 double max_phi_dot = 1;
 double max_rho_dot = 1;
 
+//Values for the rho and phi values and voltages.
 double phi_dot_desired;
 double rho_dot_desired; 
 double rho_error, phi_error;
@@ -39,7 +40,6 @@ double add_voltage, delta_voltage;
 double phi_error_integral, rho_error_integral;
 
 //Set parameters
-
 double desired_feet = 10;
 double desired_degrees = 0;
 double rho_desired = 0.3048 * desired_feet;
@@ -62,7 +62,7 @@ float battery_voltage = 8.2;
 double average[2] = {0,0};
 int total = 0;
 
-
+//Motor velocity and position variables.
 float pos_before_rad[2] = {0,0};
 float pos_after_rad[2] = {0,0};
 float delta_pos_rad[2] = {0,0};
@@ -79,6 +79,7 @@ unsigned long last_time_ms;
 unsigned long start_time_ms;
 float current_time = 0;
 
+// Motor functions in order to get encoder value.
 void motorOneInterrupt() {
   int thisA1 = digitalRead(APIN1);
   int thisB1 = digitalRead(BPIN1);
@@ -116,7 +117,7 @@ void setup() {
 void loop() {
   int i;
   for(i=0;i<2;i++){
-    
+    //variabls for velocity and position of each motor and the timer.
     current_time = (float)(last_time_ms-start_time_ms)/1000; //gets the current time
     pos_before_rad[i] = 2*pi*(float)motorCount[i]/3200; //the postion before 10ms timer
     while (millis()<last_time_ms + desired_Ts_ms) {} 
@@ -145,7 +146,7 @@ void loop() {
     //set new desired values for speed from PI controller of position
     if(rho_dot_desired > max_rho_dot) rho_dot_desired = max_rho_dot;
     else{rho_dot_desired = Kp_rho * rho_error + Ki_rho * rho_error_integral;}
-
+    //Anti Windup so that it does not overshoot.
     if(phi_dot_desired > max_phi_dot) phi_dot_desired = max_phi_dot;
     else{phi_dot_desired = Kp_phi * phi_error + Ki_phi * phi_error_integral;}
     
@@ -157,7 +158,7 @@ void loop() {
     add_voltage = Kp_rho_dot * rho_dot_error;
 
 
-
+   //Print statements to find error
     Serial.print(rho_actual);
     Serial.print(" \t ");
     Serial.print(phi_actual);
@@ -178,5 +179,3 @@ void loop() {
     }
 }
 
-    }
-}
