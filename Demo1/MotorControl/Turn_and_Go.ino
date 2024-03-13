@@ -1,3 +1,17 @@
+/*
+Caden Nubel & Joel Shorey
+Start Date:2/19/24
+Completion Date:3/8/24
+Demo 1 Prompt: Rotate the robot by a specified angle in degrees, and move forward a specified distance in feet.
+Setup: Pins 2 & 3 should be going to the motor encoder A pins on motor 1 & 2. The arduino should power the enoders on the
+motors using the 5V pin and GND and then the Motor PWM pins should be connected to pins 9 & 10 for the assciated motors 1 & 2.
+Pins 7 & 8 should go to the direction pin of the motors to set the direction of the motor velocity.
+Description of Code: This code utulizes a two input two output system which has the input of the desired forward and rotational velocities, 
+these are then run to a P controller which gives the two motors a voltage that will move the motors at the desired speeds. Then in order to controll the 
+distance we integrate this and use a PI controller on the desired forward position and rotational position. This then gives a specified desired velocity to the 
+P controller. This code is different because we specify a desired angle then wait for five seconds to make sure that it is done then we tell the desired 
+forward movement to go.
+*/
 float pi = 3.1416; // This is PI
 float diameter = 0.15;
 float radius = diameter/2;
