@@ -165,14 +165,18 @@ void loop() {
     Serial.println(phi_error);
    
 
+  //Two outputs for controller to get output voltage.
     Voltage[1] = (add_voltage - delta_voltage)/2;
     Voltage[0] = (add_voltage + delta_voltage)/2;
-
+  //Select direction for the Voltages
     for(i=0;i<2;i++){
     if (Voltage[i] > 0) digitalWrite(7+i,HIGH);
     else digitalWrite(7+i,LOW);
-
+  //Turn the voltage into a PWM
     pwm_duty_cycle[i] = 255 * abs(Voltage[i])/battery_voltage;
     analogWrite(i+9,min(pwm_duty_cycle[i],255));
+    }
+}
+
     }
 }
