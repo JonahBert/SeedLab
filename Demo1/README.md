@@ -7,6 +7,6 @@ Logistics: contains meeting minutes, project board, and demo video
 
 ComputerVision: contains code for determining the angle of a marker from the camera axis
 
-MotorControl: ///Please provide brief description of folder contents//
+MotorControl: contains code to get the robot driving straight and code to get it to turn a specified angle and then go straight
 
 

@@ -1,3 +1,17 @@
+/*
+Caden Nubel & Joel Shorey
+Start Date:2/19/24
+Completion Date:3/8/24
+Demo 1 Prompt: Move forward in a straight line and stop after a specified distance in feet (between 1 and 10 feet).
+Setup: Pins 2 & 3 should be going to the motor encoder A pins on motor 1 & 2. The arduino should power the enoders on the
+motors using the 5V pin and GND and then the Motor PWM pins should be connected to pins 9 & 10 for the assciated motors 1 & 2.
+Pins 7 & 8 should go to the direction pin of the motors to set the direction of the motor velocity.
+Description of Code: This code utulizes a two input two output system which has the input of the desired forward and rotational velocities, 
+these are then run to a P controller which gives the two motors a voltage that will move the motors at the desired speeds. Then in order to controll the 
+distance we integrate this and use a PI controller on the desired forward position and rotational position. This then gives a specified desired velocity to the 
+P controller. 
+
+*/
 float pi = 3.1416; // This is PI
 float diameter = 0.15;
 float radius = diameter/2;
@@ -15,6 +29,7 @@ unsigned int pwm_duty_cycle[2] = {0,0}; //Duty cycle for motor 1
 double max_phi_dot = 1;
 double max_rho_dot = 1;
 
+//Values for the rho and phi values and voltages.
 double phi_dot_desired;
 double rho_dot_desired; 
 double rho_error, phi_error;
@@ -25,7 +40,6 @@ double add_voltage, delta_voltage;
 double phi_error_integral, rho_error_integral;
 
 //Set parameters
-
 double desired_feet = 10;
 double desired_degrees = 0;
 double rho_desired = 0.3048 * desired_feet;
@@ -48,7 +62,7 @@ float battery_voltage = 8.2;
 double average[2] = {0,0};
 int total = 0;
 
-
+//Motor velocity and position variables.
 float pos_before_rad[2] = {0,0};
 float pos_after_rad[2] = {0,0};
 float delta_pos_rad[2] = {0,0};
@@ -65,6 +79,7 @@ unsigned long last_time_ms;
 unsigned long start_time_ms;
 float current_time = 0;
 
+// Motor functions in order to get encoder value.
 void motorOneInterrupt() {
   int thisA1 = digitalRead(APIN1);
   int thisB1 = digitalRead(BPIN1);
@@ -102,7 +117,7 @@ void setup() {
 void loop() {
   int i;
   for(i=0;i<2;i++){
-    
+    //variabls for velocity and position of each motor and the timer.
     current_time = (float)(last_time_ms-start_time_ms)/1000; //gets the current time
     pos_before_rad[i] = 2*pi*(float)motorCount[i]/3200; //the postion before 10ms timer
     while (millis()<last_time_ms + desired_Ts_ms) {} 
@@ -131,7 +146,7 @@ void loop() {
     //set new desired values for speed from PI controller of position
     if(rho_dot_desired > max_rho_dot) rho_dot_desired = max_rho_dot;
     else{rho_dot_desired = Kp_rho * rho_error + Ki_rho * rho_error_integral;}
-
+    //Anti Windup so that it does not overshoot.
     if(phi_dot_desired > max_phi_dot) phi_dot_desired = max_phi_dot;
     else{phi_dot_desired = Kp_phi * phi_error + Ki_phi * phi_error_integral;}
     
@@ -143,7 +158,7 @@ void loop() {
     add_voltage = Kp_rho_dot * rho_dot_error;
 
 
-
+   //Print statements to find error
     Serial.print(rho_actual);
     Serial.print(" \t ");
     Serial.print(phi_actual);
@@ -151,14 +166,16 @@ void loop() {
     Serial.println(phi_error);
    
 
+  //Two outputs for controller to get output voltage.
     Voltage[1] = (add_voltage - delta_voltage)/2;
     Voltage[0] = (add_voltage + delta_voltage)/2;
-
+  //Select direction for the Voltages
     for(i=0;i<2;i++){
     if (Voltage[i] > 0) digitalWrite(7+i,HIGH);
     else digitalWrite(7+i,LOW);
-
+  //Turn the voltage into a PWM
     pwm_duty_cycle[i] = 255 * abs(Voltage[i])/battery_voltage;
     analogWrite(i+9,min(pwm_duty_cycle[i],255));
     }
 }
+
