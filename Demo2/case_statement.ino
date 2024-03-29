@@ -1,3 +1,43 @@
+//Set up I2C Communication
+#include <Wire.h>
+#define MY_ADDR 8
+// Global variables to be used for I2C communication
+volatile uint8_t offset = 0;
+
+volatile uint8_t instruction[32] = {0};
+volatile uint8_t msgLength = 0;
+volatile uint8_t reply = 0;
+
+// function called when an I2C interrupt event happens
+void receive() {
+  // Set the offset, this will always be the first byte.
+  offset = Wire.read();
+  // If there is information after the offset, it is telling us more about the command.
+  while (Wire.available()) {
+    instruction[msgLength] = Wire.read();
+    msgLength++;
+  }
+}
+
+// printReceived helps us see what data we are getting from the leader
+void printReceived() {
+  Serial.print("Recieved: ");
+  Serial.println(instruction[0]);
+  Serial.print("Reply: ");
+  reply = int(instruction[0]) + 100;
+  Serial.println(reply);
+}
+
+void request() {
+  // According to the Wire source code, we must call write() within the requesting ISR
+  // and nowhere else. Otherwise, the timing does not work out. See line 238:
+  // https://github.com/arduino/ArduinoCore-avr/blob/master/libraries/Wire/src/Wire.cpp
+  Wire.write(reply);
+  Serial.println("Request Recieved");
+  reply = 0;
+}
+
+
 float pi = 3.1416; // This is PI
 float diameter = 0.15;
 float radius = diameter/2;
@@ -6,8 +46,6 @@ const int APIN1 = 2;  // A pin on motor 1
 const int APIN2 = 3;  // A pin on motor 2
 const int BPIN1 = 5;  // B pin on motor 1
 const int BPIN2 = 6;  // B pin on motor 2
-
-
 
 long motorCount[2] = {0,0}; //These are the encoder counts on the motors 1 & 2
 unsigned int pwm_duty_cycle[2] = {0,0}; //Duty cycle for motor 1
@@ -29,11 +67,10 @@ double phi_error_integral, rho_error_integral;
 
 //Set parameters
 double desired_feet = 0;
-double desired_degrees = 90;
+double desired_degrees = 0;
+double degree_increment = 30;
 double rho_desired = 0.3048 * desired_feet;
 double phi_desired = desired_degrees * pi / 180;
-
-
 
 //p controller values for speed
 double Kp_phi_dot = 3; 
@@ -44,8 +81,12 @@ double Kp_rho = 30;
 double Ki_phi = 0.1;
 double Ki_rho = 0.1;
 
-int state_machine;
-
+//Communication and Integration Variables
+int state_machine = 0;
+bool aruco_found = 0;
+double angle_from_aruco_deg_1;
+double angle_from_aruco_deg_2;
+double distance_from_aruco_feet;
 
 //Set parameters
 float battery_voltage = 8.2;
@@ -60,8 +101,6 @@ float pos_velo_rad_s[2] = {0,0};//velocity array for motors
 float delta_velo_rad_s = 0;
 
 float Voltage[2] = {battery_voltage * pwm_duty_cycle[0] / 255, battery_voltage * pwm_duty_cycle[1] / 255};
-
-
 
 //Variables to keep track of the time elapsed and setup time
 unsigned long desired_Ts_ms = 5; // desired sample time in milliseconds
@@ -110,25 +149,67 @@ void setup() {
 }
 
 void loop() {
+
   switch (state_machine) {
-    case 0:
-    velocitiesPositions();
-    double phi_desired = desired_degrees * pi / 180;
-    if(phi_desired - 0.1 < phi_actual && phi_actual < 0.1 + phi_desired){
-        Serial.println("done");
-        desired_degrees = desired_degrees + 30;
+
+    //turn 30 degree increments until the aruco marker is detected
+    case 0: 
+      velocitiesPositions();
+      phi_desired = desired_degrees * pi / 180;
+      if (phi_desired - 0.1 < phi_actual && phi_actual < 0.1 + phi_desired) {
+        desired_degrees = desired_degrees + degree_increment;
         phi_desired = desired_degrees * pi / 180;
         analogWrite(9,0);
         analogWrite(10,0);
-        while (millis()<last_time_ms_2 + desired_Ts_ms_2) {} 
+        while (millis() < last_time_ms_2 + desired_Ts_ms_2) {} 
         last_time_ms_2 = millis();
-    }
-        PIControllerDistance();
-        pControllerVelocity();
+      }
+      PIControllerDistance();
+      pControllerVelocity();
+      if (aruco_found) {
+        analogWrite(9,0);
+        analogWrite(10,0);
+        state_machine = 1;
+        start_degrees = desired_degrees;
+      }
       break;
+
+    //Receive angle in relation to the aruco marker. Turn to face the aruco marker.
     case 1:
+      desired_degrees = desired_degrees + angle_from_aruco_deg_1;
+      velocitiesPositions();
+      PIControllerDistance();
+      pControllerVelocity();
+      if (desired_degrees == start_degrees + angle_from_aruco_deg_1) {
+
+      }
+      break;
+
+    //Move 4 feet straight forward.
+    case 2:
 
       break;
+
+    //recalculate angle and distance in relation to aruco marker. Turn that angle.
+    case 3:
+
+      break;
+
+    //Move the distance to the aruco marker minus 6 inches
+    case 4:
+
+      break;
+
+    //Move 6.5 feet straight forward
+    case 5:
+
+      break;
+
+    //default case
+    default: 
+
+      break;
+
 
   } 
 
@@ -137,8 +218,8 @@ void loop() {
 
 void velocitiesPositions(){
   int i;
-  for(i=0;i<2;i++){
-    //variabls for velocity and position of each motor and the timer.
+  for (i=0;i<2;i++){
+    //variables for velocity and position of each motor and the timer.
     current_time = (float)(last_time_ms-start_time_ms)/1000; //gets the current time
     pos_before_rad[i] = 2*pi*(float)motorCount[i]/3200; //the postion before 10ms timer
     while (millis()<last_time_ms + desired_Ts_ms) {} 
@@ -208,4 +289,3 @@ void voltageOutput(){
   analogWrite(i+9,min(pwm_duty_cycle[i],255));
   }
 }
-
