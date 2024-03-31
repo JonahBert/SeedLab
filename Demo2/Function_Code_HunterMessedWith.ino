@@ -1,6 +1,6 @@
 #define MY_ADDR 8
 #define MARKER_FOUND 1
-#define REQUEST_FOUND 0x01
+#define REQUEST_FOUND 0x01 
 #define REQUEST_ANGLE 0x02
 #define REQUEST_DISTANCE 0x03
 #define PI_ADDR 8
@@ -143,9 +143,9 @@ void setup() {
   Wire.onRequest(request);
 }
 
-void loop() {
-    //initialize  state 
-    state machineState = state::IDLE;
+void loop(){
+    //initialize  state on first exexution, so declare as static
+    static state machineState = state::IDLE;
 
     velocitiesPositions();
     PIControllerDistance();
@@ -177,6 +177,7 @@ void loop() {
             break;
 
         case state::CENTER:
+            //short pause to allow PI to get correct angle
             Wire.BeginTransmission(PI_ADDR);
             Wire.write(REQUEST_ANGLE);
             Wire.EndTransmission();
@@ -206,15 +207,21 @@ void loop() {
                 }
                 else{
                     //drive distance to marker - 1ft
-                    machineState = state::CIRCLE;
+                    machineState = state::STOP;
                 }
                 recieved = false;
             }
             break;
 
         case state::CIRCLE:
-            //drive in circle
+            //drive in circle, eventuallly this would circle until marker detected again i think for final demo
             machineState = state::IDLE;
+            break;
+        
+        case state::STOP:
+            //do nothing
+            break;
+
     }
     //make sure msgLength set to 0
     msgLength = 0;
