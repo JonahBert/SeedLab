@@ -1,9 +1,11 @@
 #define MY_ADDR 8
-#define REQUEST_FOUND 1
-#define REQUEST_ANGLE 2
-#define REQUEST_DISTANCE 3
+#define MARKER_FOUND 1
+#define REQUEST_FOUND 0x01
+#define REQUEST_ANGLE 0x02
+#define REQUEST_DISTANCE 0x03
 #define PI_ADDR 8
 #include <Wire.h>
+#include <string.h>
 float pi = 3.1416; // This is PI
 float diameter = 0.15;
 float radius = diameter/2;
@@ -80,16 +82,20 @@ volatile uint8_t command = 0;
 volatile uint8_t offset = 0;
 float angle = 0;
 float distance = 0;
+
+//recieve flag, true if data has been recieved
 bool recieved = false;
 
 //state machine flags
-check = true;
+bool check = true;
+
 //define state class
 enum class state {
     IDLE,
     SEARCH,
     CENTER,
     DRIVE,
+    CIRCLE,
     STOP
 };
 
@@ -141,59 +147,77 @@ void loop() {
     //initialize  state 
     state machineState = state::IDLE;
 
-    //make sure msgLength set to 0
-    msgLength = 0;
-
     velocitiesPositions();
     PIControllerDistance();
     pControllerVelocity();
 
+    //state machine to control different parts of task
     switch (machineState){
         case state::IDLE:
+            //check flag controls wether or not robot will stop halfway and recenter
+            check = true;
             machineState = state::SEARCH;
             break;
+
         case state::SEARCH:
             //turn 30 degrees at a time idk how to do
+            //following requests data from pu
             Wire.BeginTransmission(PI_ADDR);
             Wire.write(REQUEST_FOUND);
             Wire.EndTransmission();
             //Pause idk how to do
-            if (instruction[1] == 1 ){
-                //marker found
-                machineState = state::CENTER;
+            if (recieved == true){
+                //output recieved message for debugging purposes
+                printReceived();
+                if (instruction[0] == MARKER_FOUND){
+                    //marker found
+                    machineState = state::CENTER;
+                }
             }
             break;
+
         case state::CENTER:
             Wire.BeginTransmission(PI_ADDR);
             Wire.write(REQUEST_ANGLE);
             Wire.EndTransmission();
-            angle = instruction[1];
             //only continue if data was received, flag set in recieve ISR
             if (recieved == true){
+                //output recieved message for debugging purposes
+                printReceived();
+                angle = data_to_float();
                 //turn robot desired angle idk how to do
                 machineState = state::DRIVE;
                 recieved == false;
             }
             break;
+
         case state::DRIVE:
             Wire.BeginTransmission(PI_ADDR);
             Wire.write(REQUEST_DISTANCE);
             Wire.EndTransmission();
-            distance = instruction[1];
             if(recieved == true){
+                //output recieved message for debugging purposes
+                printReceived();
+                distance = data_to_float();
                 if(check == true){
                     //drive distance/2
                     machineState = state::CENTER;
                     check = false;
                 }
                 else{
-                    //drive distance
-                    machineState == false;
-                    
+                    //drive distance to marker - 1ft
+                    machineState = state::CIRCLE;
                 }
+                recieved = false;
             }
             break;
+
+        case state::CIRCLE:
+            //drive in circle
+            machineState = state::IDLE;
     }
+    //make sure msgLength set to 0
+    msgLength = 0;
 }
 
 
@@ -282,10 +306,38 @@ void receive() {
   }
 }
 
+//converts string recieved from PI to float
+float data_to_float(){
+    String data = "";
+    for(int i = 0; i < msgLength; i++){
+        data += (instruction[i]);
+    }
+    return data.toFloat();
+}
+
 void request() {
   // According to the Wire source code, we must call write() within the requesting ISR
   // and nowhere else. Otherwise, the timing does not work out. See line 238:
   // https://github.com/arduino/ArduinoCore-avr/blob/master/libraries/Wire/src/Wire.cpp
   Wire.write();
   Serial.println("Request Recieved");
+}
+
+//print recieved data for debugging purposes
+void printReceived() {
+  // Print on serial console
+  Serial.print("Offset received: ");
+  Serial.println(offset);
+  Serial.print("Message Length: ");
+  Serial.println(msgLength);
+  Serial.print("Message: ");
+  for(int i = 0; i < msgLength; i++){
+    Serial.print(char(instruction[i]));
+  }
+  Serial.println();
+  Serial.print("Instruction received: ");
+  for (int i=0;i<msgLength;i++) {
+      Serial.print(string(instruction[i])+"\t");
+    }
+    Serial.println("");
 }

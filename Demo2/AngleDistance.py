@@ -76,9 +76,10 @@ def writeToLCDandARD():
 
     #while loop
     while True:
+        #reset instruction to 0 and marker to false every iteration
+        instruction = 0
         marker = False
-        #get instruction from arduino, tells what to send
-        instruction = i2cARD.read_byte_data(ARD_ADDR, 0)
+
         if not qAngle.empty() and not qDistance.empty():
             marker = True
             angle = qAngle.get()
@@ -89,13 +90,15 @@ def writeToLCDandARD():
             message = "Angle: " + str(angle) + "\nDist: " + str(distance)
         lcd.message = message
         #create list of different commands
-        command = [marker, float(angle), float(distance)]
-        instruction = i2cARD.read_byte(ARD_ADDR)
+        command = [marker, str(angle), str(distance)]
+        instruction = i2cARD.read_byte_data(ARD_ADDR)
         if instruction != 0:
+            print("INSTRUCTION RECIEVED: " + str(instruction))
             try:
                 #ask the arduino to take on encoder reading
                 #index command list with instruction to send proper value (more elegant than state machine i think)
                 i2cARD.write_block_data(ARD_ADDR, 0, command[instruction - 1])
+                print("DATA SENT SUCCESFULLY: " + str(command[instruction - 1]))
             except IOError:
                 print("Could not write data to the to the Arduino.")
 
@@ -145,7 +148,7 @@ while True:
                 angle = -1 * halfFOV * (deltaX / centerX)
                 angle = round(angle,3)
 
-                #calculate height
+                #calculate height and use ratios to calculate distance
                 height = newCorners[1][1] - newCorners[0][1]
                 distance = heightAt1ft / height
                 distance = round(distance,3)
