@@ -15,10 +15,7 @@ import queue
 import board
 import cv2
 from cv2 import aruco
-import numpy as np
 from smbus2 import SMBus
-from random import random
-from time import sleep
 import adafruit_character_lcd.character_lcd_rgb_i2c as character_lcd
 
 
@@ -28,6 +25,9 @@ i2cLCD = board.I2C()
 #initialize threading queue
 qAngle = queue.Queue()
 qDistance= queue.Queue()
+#make max size once to keep qeue filling up with past values that are no longer relevant i.e. the marker moving but old values are still in queue
+qAngle = queue.Queue(maxsize=1)
+qDistance = queue.Queue(maxsize=1)  
 
 
 # I2C address of the Arduino, set in Arduino sketch
@@ -42,9 +42,13 @@ aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_50)
 # initialize the camera. If channel 0 doesn't work, try channel 1
 camera = cv2.VideoCapture(0)
 
-#set dimensions
+#exposure value
+exp_val = -9
+
+#set dimensions and parameters
 camera.set(cv2.CAP_PROP_FRAME_WIDTH,640)
 camera.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
+camera.set(cv2.CAP_PROP_EXPOSURE, exp_val)
 centerX = 640//2
 centerY = 480//2
 
@@ -56,7 +60,7 @@ heightAt1ft = 105
 fullFOV = 53.1
 halfFOV = fullFOV / 2
 
-def writeToLCD():
+def writeToLCDandARD():
     # Initialize LCD
     lcd_columns = 16
     lcd_rows = 2
@@ -66,9 +70,15 @@ def writeToLCD():
     message = "No Markers"
     lcd.message = message
 
+    #initialize variables
+    angle = 0
+    distance = 0
+
     #while loop
     while True:
         marker = False
+        #get instruction from arduino, tells what to send
+        instruction = i2cARD.read_byte_data(ARD_ADDR, 0)
         if not qAngle.empty() and not qDistance.empty():
             marker = True
             angle = qAngle.get()
@@ -77,14 +87,27 @@ def writeToLCD():
             message = "No Markers"
         else:
             message = "Angle: " + str(angle) + "\nDist: " + str(distance)
-
+        lcd.message = message
+        #create list of different commands
+        command = [marker, float(angle), float(distance)]
+        instruction = i2cARD.read_byte(ARD_ADDR)
+        if instruction != 0:
+            try:
+                #ask the arduino to take on encoder reading
+                #index command list with instruction to send proper value (more elegant than state machine i think)
+                i2cARD.write_block_data(ARD_ADDR, 0, command[instruction - 1])
+            except IOError:
+                print("Could not write data to the to the Arduino.")
 
 #start conditional            
-myThread = threading.Thread(target=writeToLCD,args=())
+myThread = threading.Thread(target=writeToLCDandARD,args=())
 myThread.start()
 
 #declare variables
 prevAngle = 0
+prevDistance = 0
+angle = 0
+distance = 0
 
 while True:
     #take picture
@@ -99,7 +122,7 @@ while True:
     
     #detect markers
     corners,ids,rejected = aruco.detectMarkers(grey,aruco_dict)
-    angle = 1000
+
     
     #if marker is detected, calculate center
     if corners is not None:
@@ -123,16 +146,15 @@ while True:
                 angle = round(angle,3)
 
                 #calculate height
-                width = newCorners[1][1] - newCorners[0][1]
-                distance = width / heightAt1ft
+                height = newCorners[1][1] - newCorners[0][1]
+                distance = heightAt1ft / height
                 distance = round(distance,3)
 
-
-                qAngle.queue.clear()
+                #qAngle.queue.clear()
                 qAngle.put(angle)
                 prevAngle = angle
                 
-                qDistance.queue.clear()
+                #qDistance.queue.clear()
                 qDistance.put(distance)
                 prevDistance = distance
                 
