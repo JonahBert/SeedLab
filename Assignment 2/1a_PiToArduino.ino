@@ -50,7 +50,7 @@ void printReceived() {
   Serial.println();
   Serial.print("Instruction received: ");
   for (int i=0;i<msgLength;i++) {
-      Serial.print(String(instruction[i])+"\t");
+      Serial.print(string(instruction[i])+"\t");
     }
     Serial.println("");
 }

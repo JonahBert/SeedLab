@@ -147,9 +147,9 @@ void loop(){
     //initialize  state on first exexution, so declare as static
     static state machineState = state::IDLE;
 
-    velocitiesPositions();
-    PIControllerDistance();
-    pControllerVelocity();
+    //velocitiesPositions();
+    //PIControllerDistance();
+    //pControllerVelocity();
 
     //state machine to control different parts of task
     switch (machineState){
@@ -160,11 +160,10 @@ void loop(){
             break;
 
         case state::SEARCH:
-            //turn 30 degrees at a time idk how to do
             //following requests data from pu
-            Wire.BeginTransmission(PI_ADDR);
+            Wire.beginTransmission(PI_ADDR);
             Wire.write(REQUEST_FOUND);
-            Wire.EndTransmission();
+            Wire.endTransmission();
             //Pause idk how to do
             if (recieved == true){
                 //output recieved message for debugging purposes
@@ -173,14 +172,18 @@ void loop(){
                     //marker found
                     machineState = state::CENTER;
                 }
+                else{
+                    //turn 30 degrees
+                }
+                recieved = false;
             }
             break;
 
         case state::CENTER:
             //short pause to allow PI to get correct angle
-            Wire.BeginTransmission(PI_ADDR);
+            Wire.beginTransmission(PI_ADDR);
             Wire.write(REQUEST_ANGLE);
-            Wire.EndTransmission();
+            Wire.endTransmission();
             //only continue if data was received, flag set in recieve ISR
             if (recieved == true){
                 //output recieved message for debugging purposes
@@ -193,9 +196,9 @@ void loop(){
             break;
 
         case state::DRIVE:
-            Wire.BeginTransmission(PI_ADDR);
+            Wire.beginTransmission(PI_ADDR);
             Wire.write(REQUEST_DISTANCE);
-            Wire.EndTransmission();
+            Wire.endTransmission();
             if(recieved == true){
                 //output recieved message for debugging purposes
                 printReceived();
@@ -326,7 +329,7 @@ void request() {
   // According to the Wire source code, we must call write() within the requesting ISR
   // and nowhere else. Otherwise, the timing does not work out. See line 238:
   // https://github.com/arduino/ArduinoCore-avr/blob/master/libraries/Wire/src/Wire.cpp
-  Wire.write();
+  Wire.write(0);
   Serial.println("Request Recieved");
 }
 

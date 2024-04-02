@@ -97,6 +97,7 @@ def writeToLCDandARD():
             try:
                 #ask the arduino to take on encoder reading
                 #index command list with instruction to send proper value (more elegant than state machine i think)
+                #if instruction is 1 probably just need to write a byte not a block
                 i2cARD.write_block_data(ARD_ADDR, 0, command[instruction - 1])
                 print("DATA SENT SUCCESFULLY: " + str(command[instruction - 1]))
             except IOError:
