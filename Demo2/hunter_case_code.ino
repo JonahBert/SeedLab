@@ -1,4 +1,4 @@
-#define MY_ADDR 8
+ #define MY_ADDR 8
 #define MARKER_FOUND 1
 #define REQUEST_FOUND 1
 #define REQUEST_ANGLE 2
@@ -166,6 +166,7 @@ void loop(){
 
         case state::SEARCH:
             //turn in 30 degree increments until aruco marker is found
+             reply = REQUEST_FOUND;
             velocities_positions();
             phi_desired = desired_degrees * pi / 180;
             if (phi_desired - 0.1 < phi_actual && phi_actual < 0.1 + phi_desired) {
@@ -175,21 +176,16 @@ void loop(){
               analogWrite(10,0);
               //Pause
               while (millis() < last_time_ms_2 + desired_Ts_ms_2) {
-                //following requests data from pi
-                //Wire.beginTransmission(PI_ADDR);
-                //Wire.write(REQUEST_FOUND);
-                //Wire.endTransmission();
-                reply = REQUEST_FOUND;
+                //wait
               } 
               last_time_ms_2 = millis();
             }
             p_i_controller_distance();
             p_controller_velocity();
             
-
+            //check recieve flag
             if (recieved == true){
                 //output recieved message for debugging purposes
-                printReceived();
                 if (instruction[0] == MARKER_FOUND){
                     //marker found
                     machineState = state::CENTER;
@@ -200,30 +196,26 @@ void loop(){
 
         case state::CENTER:
             //short pause to allow PI to get correct angle
-                //Wire.beginTransmission(PI_ADDR);
-                //Wire.write(REQUEST_FOUND);
-                //Wire.endTransmission();
-                reply = REQUEST_ANGLE;
+            reply = REQUEST_ANGLE;
             //only continue if data was received, flag set in recieve ISR
             if (recieved == true){
                 //output recieved message for debugging purposes
-                printReceived();
-                angle = data_to_float();
+                angle = dataToFloat(instruction);
+                Serial.print("Angle Recieved: ");
+                Serial.println(angle);
                 //turn robot desired angle idk how to do
                 machineState = state::DRIVE;
-                recieved == false;
+                recieved = false;
             }
             break;
 
         case state::DRIVE:
-                //Wire.beginTransmission(PI_ADDR);
-                //Wire.write(REQUEST_FOUND);
-                //Wire.endTransmission();
-                reply = REQUEST_DISTANCE;
+            reply = REQUEST_DISTANCE;
             if(recieved == true){
                 //output recieved message for debugging purposes
-                printReceived();
-                distance = data_to_float();
+                distance = dataToFloat(instruction);
+                Serial.print("Distance Recieved: ");
+                Serial.println(distance);
                 if(check == true){
                     //drive distance/2
                     machineState = state::CENTER;
@@ -238,6 +230,7 @@ void loop(){
             break;
 
         case state::CIRCLE:
+            reply = 0;
             //drive in circle, eventuallly this would circle until marker detected again I think for final demo
             desired_feet = desired_feet + desired_circle_distance_feet;
             rho_desired = 0.3048 * desired_feet;
@@ -253,6 +246,7 @@ void loop(){
             break;
         
         case state::STOP:
+            reply = 0;
             //do nothing
             break;
 
@@ -336,32 +330,29 @@ void voltage_output(){
   }
 }
 
+
+
 void receive() {
   // Set the offset, this will always be the first byte.
   offset = Wire.read();
   // If there is information after the offset, it is telling us more about the command.
   recieved = true;
+    // Set the offset, this will always be the first byte.
+  offset = Wire.read();
+  // If there is information after the offset, it is telling us more about the command.
   while (Wire.available()) {
     instruction[msgLength] = Wire.read();
     msgLength++;
   }
 }
 
-//converts string recieved from PI to float
-float data_to_float() {
-    String data = "";
-    for(int i = 0; i < msgLength; i++){
-        data += (instruction[i]);
-    }
-    return data.toFloat();
-}
 
 void request() {
   // According to the Wire source code, we must call write() within the requesting ISR
   // and nowhere else. Otherwise, the timing does not work out. See line 238:
   // https://github.com/arduino/ArduinoCore-avr/blob/master/libraries/Wire/src/Wire.cpp
   Wire.write(reply);
-  Serial.println("Request Recieved");
+  //Serial.println("Request Recieved");
 }
 
 //print recieved data for debugging purposes
@@ -381,4 +372,10 @@ void printReceived() {
       Serial.print(String(instruction[i])+"\t");
     }
     Serial.println("");
+}
+
+float dataToFloat(volatile uint8_t instruction[32]){
+  float f;
+  memcpy(&f, instruction, sizeof(float));
+  return f;
 }
