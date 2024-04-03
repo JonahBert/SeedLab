@@ -1,9 +1,11 @@
- #define MY_ADDR 8
+#define MY_ADDR 8
 #define MARKER_FOUND 1
 #define REQUEST_FOUND 1
 #define REQUEST_ANGLE 2
 #define REQUEST_DISTANCE 3
 #define PI_ADDR 8
+#define BUFFER_SIZE 4
+
 #include <Wire.h>
 #include <string.h>
 float pi = 3.1416; // This is PI
@@ -85,6 +87,7 @@ volatile uint8_t msgLength = 0;
 volatile uint8_t command = 0;
 volatile uint8_t offset = 0;
 volatile uint8_t reply = 0;
+uint8_t marker = 0;
 float angle = 0;
 float distance = 0;
 
@@ -104,6 +107,7 @@ enum class state {
     CIRCLE,
     STOP
 };
+state machineState = state::IDLE;
 
 
 
@@ -151,7 +155,6 @@ void setup() {
 
 void loop(){
     //initialize  state on first exexution, so declare as static
-    static state machineState = state::IDLE;
 
     velocities_positions();
     p_i_controller_distance();
@@ -161,13 +164,13 @@ void loop(){
     switch (machineState){
         case state::IDLE:
             //check flag controls wether or not robot will stop halfway and recenter
+            Serial.print("Searching\n");
             machineState = state::SEARCH;
             break;
 
         case state::SEARCH:
             //turn in 30 degree increments until aruco marker is found
             recieveEnabled = true;
-            reply = REQUEST_FOUND;
             //velocities_positions();
             //phi_desired = desired_degrees * pi / 180;
             //if (phi_desired - 0.1 < phi_actual && phi_actual < 0.1 + phi_desired) {
@@ -186,10 +189,11 @@ void loop(){
             
             //check recieve flag
             if (recieved == true){
-              printReceived();
+                printReceived();
                 //output recieved message for debugging purposes
-                if (instruction[0] == MARKER_FOUND){
+                if (marker == 1){
                     //marker found
+                    Serial.print("centering\n");
                     machineState = state::CENTER;
                     recieveEnabled = false;
                 }
@@ -200,7 +204,6 @@ void loop(){
 
         case state::CENTER:
             //short pause to allow PI to get correct angle
-            reply = REQUEST_ANGLE;
             recieveEnabled = true;
             //only continue if data was received, flag set in recieve ISR
             if (recieved == true){
@@ -214,6 +217,9 @@ void loop(){
               //make sure msgLength set to 0
               msgLength = 0;
               recieved = false;
+              Serial.print("Angle Received: \n");
+              Serial.println(angle);
+              Serial.print("Driving\n");
               machineState = state::DRIVE;
             }
             break;
@@ -222,6 +228,7 @@ void loop(){
             recieveEnabled = true;
             reply = REQUEST_DISTANCE;
             if(recieved == true){
+              printReceived();
               recieveEnabled = false;
               //output recieved message for debugging purposes
               //distance = dataToFloat();
@@ -231,6 +238,9 @@ void loop(){
               recieved = false;
               //make sure msgLength set to 0
               msgLength = 0;
+              Serial.print("Distance Receceived: \n");
+              Serial.println(distance);
+              Serial.print("Stopping\n");
               machineState = state::STOP;
             }
             break;
@@ -347,6 +357,18 @@ void receive(){
       instruction[msgLength] = Wire.read();
       msgLength++;
     }
+    
+    marker = instruction[0];
+    byte angleBuffer[BUFFER_SIZE] = {0};
+    byte distanceBuffer[BUFFER_SIZE] = {0};
+    for(int i = 0; i < 4; i++){
+      angleBuffer[i] = instruction[4-i];
+    }
+    for(int i = 0; i < 4; i++){
+      distanceBuffer[i] = instruction[8-i];
+    }
+    memcpy(&distance, distanceBuffer, sizeof(float));
+    memcpy(&angle, angleBuffer, sizeof(float));
   }
 }
 
@@ -376,10 +398,4 @@ void printReceived() {
       Serial.print(String(instruction[i])+"\t");
     }
     Serial.println("");
-}
-
-float dataToFloat(){
-  float f;
-  memcpy(&f, instruction, sizeof(float));
-  return f;
 }

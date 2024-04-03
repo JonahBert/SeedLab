@@ -5,8 +5,9 @@
 // Date Completed: 2/8/2024 
 // Description: 
 
-// include <Wire.h>
-// define MY_ADDR 8
+#include <Wire.h>
+#define MY_ADDR 8
+
 // Global variables to be used for I2C communication
 volatile uint8_t offset = 0;
 
@@ -50,7 +51,7 @@ void printReceived() {
   Serial.println();
   Serial.print("Instruction received: ");
   for (int i=0;i<msgLength;i++) {
-      Serial.print(string(instruction[i])+"\t");
+      Serial.print(String(instruction[i])+"\t");
     }
     Serial.println("");
 }
