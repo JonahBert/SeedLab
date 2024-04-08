@@ -107,15 +107,8 @@ while True:
                 #The angle calculation of the arcuo marker to the center of the camera.
                 #We are taking the half of the fov to split the screen into positive and negative and using the ratio between the difference of X and the center to calculate the total angle away from the center in the x direction. 
                 angle = -1 * halfFOV * (deltaX / centerX)
-                
-                #angle correction
-                if angle > 0:
-                    angle = angle*0.95
-                elif angle < 0:
-                    angle = angle*0.85
-                    
                 angle = round(angle,3)
-                #print(angle)
+
                 
                 #calculate height and use ratios to calculate distance
                 height = newCorners[1][1] - newCorners[0][1]
@@ -129,8 +122,6 @@ while True:
         #pack floats for angle and distance
         anglePacked = list(struct.pack('!f', float(angle)))
         distancePacked = list(struct.pack('!f', float(distance)))
-        #anglePacked = [ord(character) for character in str(angle)]
-        #distancePacked = [ord(character) for character in str(distance)]
 
         #place values in list to be indexed later
         command = [marker]
@@ -142,8 +133,6 @@ while True:
             try:
                 i2cARD.write_i2c_block_data(ARD_ADDR, 0, command)
                 print("DATA SENT SUCCESFULLY: " + str(command))
-                print("Angle: " + str(angle))
-                #print("Distance: " + str(distance))
             except:
                 print("Error" + str(angle))
             wait = 0
