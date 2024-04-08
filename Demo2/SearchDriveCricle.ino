@@ -1,9 +1,31 @@
- #define MY_ADDR 8
+/*
+Controls Coders: Caden Nubel & Joel Shorey & Hunter Burnham
+Start Date: 3/25/24
+Completion Date: 4/5/24
+
+Objective: Search for a marker, drive up to it, then circle the marker without hitting it or going outside of a 2 foot radius.
+
+Explaination: This code uses communication between a Pi and arudino using I2C and a PI controller for position and P controller for velocity from encoders. 
+A state machine is used in order to move from state to state and it is moved forward either by the Pi detecting or by it finishing a case. 
+The cases include detection, this turns in 30 degree intervals and pauses to allow detection by Pi, this is broken if the Pi detects an aruco marker.
+Then is the center case where the Pi sends the angle from center and we use the PID conroller to center the robot that many degrees. 
+The Drive case uses PID to make the robot drive a little less than 7 feet forward. Turn case then turns it 90 degrees and the circle case uses a P controller and 
+encoder counts to make it turn 360 degrees around the marker.
+
+Setup: Pins 2 & 3 should be going to the motor encoder A pins on motor 1 & 2. The arduino should power the enoders on the
+motors using the 5V pin and GND and then the Motor PWM pins should be connected to pins 9 & 10 for the assciated motors 1 & 2.
+Pins 7 & 8 should go to the direction pin of the motors to set the direction of the motor velocity.
+
+For i2c: connect pins A6,A5, and GND to i2c connections on pi
+*/
+#define MY_ADDR 8
 #define MARKER_FOUND 1
 #define REQUEST_FOUND 1
 #define REQUEST_ANGLE 2
 #define REQUEST_DISTANCE 3
 #define PI_ADDR 8
+#define BUFFER_SIZE 4
+
 #include <Wire.h>
 #include <string.h>
 float pi = 3.1416; // This is PI
@@ -38,11 +60,12 @@ double desired_feet = 0;
 double desired_degrees = 0;
 double rho_desired = 0.3048 * desired_feet;
 double phi_desired = desired_degrees * pi / 180;
-double circle_radius_feet = 1;
+double circle_radius_feet = 1.85;
 double desired_circle_distance_feet = 2 * pi * circle_radius_feet;
 double circle_percentage;
 double desired_orientation_degrees = 0;
 double rho_time_stamp, start_degrees;
+double phi_actual_after_turn;
 
 
 //p controller values for speed
@@ -76,7 +99,7 @@ unsigned long desired_Ts_ms = 5; // desired sample time in milliseconds
 unsigned long last_time_ms;
 unsigned long start_time_ms;
 float current_time = 0;
-unsigned long desired_Ts_ms_2 = 1250; // desired sample time in milliseconds
+unsigned long desired_Ts_ms_2 = 2000; // desired sample time in milliseconds
 unsigned long last_time_ms_2;
 
 //comunication variables
@@ -85,8 +108,10 @@ volatile uint8_t msgLength = 0;
 volatile uint8_t command = 0;
 volatile uint8_t offset = 0;
 volatile uint8_t reply = 0;
+uint8_t marker = 0;
 float angle = 0;
 float distance = 0;
+float angle1;
 
 //recieve flag, true if data has been recieved
 bool recieved = false;
@@ -101,9 +126,11 @@ enum class state {
     SEARCH,
     CENTER,
     DRIVE,
+    TURN,
     CIRCLE,
     STOP
 };
+state machineState = state::IDLE;
 
 
 
@@ -149,49 +176,54 @@ void setup() {
   Wire.onRequest(request);
 }
 
-void loop(){
-    //initialize  state on first exexution, so declare as static
+void loop() {
     static state machineState = state::IDLE;
-
-    velocities_positions();
-    p_i_controller_distance();
-    p_controller_velocity();
 
     //state machine to control different parts of task
     switch (machineState){
         case state::IDLE:
             //check flag controls wether or not robot will stop halfway and recenter
+            Serial.print("Searching\n");
             machineState = state::SEARCH;
             break;
 
         case state::SEARCH:
             //turn in 30 degree increments until aruco marker is found
             recieveEnabled = true;
-            reply = REQUEST_FOUND;
-            //velocities_positions();
-            //phi_desired = desired_degrees * pi / 180;
-            //if (phi_desired - 0.1 < phi_actual && phi_actual < 0.1 + phi_desired) {
-              //desired_degrees = desired_degrees + 30;
-              //phi_desired = desired_degrees * pi / 180;
-              //analogWrite(9,0);
-              //analogWrite(10,0);
+            velocities_positions();
+            max_phi_dot = 1;
+            phi_desired = desired_degrees * pi / 180;
+            if (phi_desired - 0.1 < phi_actual && phi_actual < 0.1 + phi_desired) {
+              desired_degrees = desired_degrees + 30;
+              phi_desired = desired_degrees * pi / 180;
+              analogWrite(9,0);
+              analogWrite(10,0);
               //Pause
-              //while (millis() < last_time_ms_2 + desired_Ts_ms_2) {
-                //wait
-              //} 
-              //last_time_ms_2 = millis();
-            //}
-            //p_i_controller_distance();
-            //p_controller_velocity();
+              while (millis() < last_time_ms_2 + desired_Ts_ms_2) {} 
+              last_time_ms_2 = millis();
+            }
+            p_i_controller_distance();
+            p_controller_velocity();
             
             //check recieve flag
             if (recieved == true){
-              printReceived();
+                analogWrite(9,0);
+                analogWrite(10,0);
+                printReceived();
                 //output recieved message for debugging purposes
-                if (instruction[0] == MARKER_FOUND){
+                if (marker == 1){
                     //marker found
+                    Serial.print("centering\n");
                     machineState = state::CENTER;
-                    recieveEnabled = false;
+                    angle1 = angle;
+                    Serial.println(angle1);
+                    if(angle1 > 1.8 || angle1 < -1.8){
+                      desired_degrees = angle1 + desired_degrees;
+                      marker = 0;
+                      recieveEnabled = false;
+                    }
+                    desired_degrees = desired_degrees - 30;
+                    phi_desired = desired_degrees * pi / 180;
                 }
                 recieved = false;
                 msgLength = 0;
@@ -200,70 +232,124 @@ void loop(){
 
         case state::CENTER:
             //short pause to allow PI to get correct angle
-            reply = REQUEST_ANGLE;
             recieveEnabled = true;
+            Ki_phi = 0.3;
+            Kp_phi = 50;
+            max_phi_dot = 0.08;
+            min_phi_dot = -0.08;
             //only continue if data was received, flag set in recieve ISR
-            if (recieved == true){
-              recieveEnabled = false;
-              printReceived();
-              //output recieved message for debugging purposes
-              //angle = dataToFloat();
-              //Serial.print("Angle Recieved: ");
-              //Serial.println(angle);
-              //turn robot desired angle idk how to do
-              //make sure msgLength set to 0
-              msgLength = 0;
-              recieved = false;
-              machineState = state::DRIVE;
+            recieveEnabled = false;
+            Serial.println(phi_error);
+            velocities_positions();
+            p_i_controller_distance();
+            p_controller_velocity();
+            msgLength = 0;
+            recieved = false;
+            // if it gets to the desired value switch to drive state and revert the antiwindup values.
+            if (phi_actual = phi_desired) {
+                machineState = state::DRIVE;
+                rho_desired = rho_actual + (6.1 * 0.3048);
+                max_phi_dot = 0.8;
+                max_rho_dot = 1;
+                min_phi_dot = -0.8;
+                min_rho_dot = -1;
+                Ki_phi = 0.1;
             }
+
             break;
 
         case state::DRIVE:
+            // drive forward a little less than 7 feet
             recieveEnabled = true;
-            reply = REQUEST_DISTANCE;
-            if(recieved == true){
-              recieveEnabled = false;
-              //output recieved message for debugging purposes
-              //distance = dataToFloat();
-              //Serial.print("Distance Recieved: ");
-              //Serial.println(distance);
-              //drive distance to marker - 1ft
-              recieved = false;
-              //make sure msgLength set to 0
-              msgLength = 0;
-              machineState = state::STOP;
+            //reply = REQUEST_DISTANCE;
+
+            //drive 6.5 feet
+            velocities_positions();
+            p_i_controller_distance();
+            p_controller_velocity();
+            recieveEnabled = false;
+            recieved = false;
+            //make sure msgLength set to 0
+            msgLength = 0;
+            // if the value of motor turns is close to what it should be.
+            if (rho_desired - 0.05 < rho_actual && rho_actual < 0.05 + rho_desired) {
+              machineState = state::TURN;
+              desired_degrees = desired_degrees - 86;
+              phi_desired = desired_degrees * pi / 180;
+              analogWrite(9,0);
+              analogWrite(10,0);
+
+              /*
+              //Pause
+              last_time_ms_2 = millis();
+              while (millis() < last_time_ms_2 + desired_Ts_ms_2) {}
+              */
+
             }
             break;
 
+        case state::TURN:
+        // turn 90 degrees to set up circle.
+          //receiveEnabled = true;
+          velocities_positions();
+          p_i_controller_distance();
+          p_controller_velocity();
+          if (phi_desired - 0.05 < phi_actual && phi_actual < 0.05 + phi_desired) {
+            phi_actual_after_turn = phi_actual;
+            
+            machineState = state::CIRCLE;
+            analogWrite(9,0);
+            analogWrite(10,0);
+
+            /*
+            //Pause
+            last_time_ms_2 = millis();
+            while (millis() < last_time_ms_2 + desired_Ts_ms_2) {} 
+            */
+          }
+          break;
+
         case state::CIRCLE:
-            reply = 0;
-            //drive in circle, eventuallly this would circle until marker detected again I think for final demo
+            //drive in circle using p controller with semi equivalent velocities.
             desired_feet = desired_feet + desired_circle_distance_feet;
             rho_desired = 0.3048 * desired_feet;
             rho_time_stamp = rho_actual;
-            while (desired_orientation_degrees < 360) {
-              circle_percentage = (rho_actual - rho_time_stamp) * 0.3048 / desired_circle_distance_feet;
-              desired_orientation_degrees = circle_percentage * 360;
+            rho_actual = 0;
+            while (phi_actual < phi_actual_after_turn + 2*pi - 0.1) {
+              while(phi_actual < phi_actual_after_turn + pi){
+              rho_dot_desired = 1.7;
+              phi_dot_desired = (rho_dot_desired / circle_radius_feet);
               velocities_positions();
-              p_i_controller_distance();
+              p_controller_velocity();}
+              rho_dot_desired = 2;
+              phi_dot_desired = (rho_dot_desired / circle_radius_feet) - 0.1;
+              velocities_positions();
               p_controller_velocity();
+
+
             }
+            analogWrite(9,0);
+            analogWrite(10,0);
             machineState = state::STOP;
             break;
         
         case state::STOP:
-            reply = 0;
+            //Stop case for the end that goes when encoders get near 360 degrees around a circle
+            analogWrite(9,0);
+            analogWrite(10,0);
+            machineState = state::STOP;
             //do nothing
             break;
 
     }
 }
 
-
+//Function for calculating velocities and positions from encoder positions
+//Including Rho and Phi 
 void velocities_positions(){
   int i;
   for(i=0;i<2;i++){
-    //variabls for velocity and position of each motor and the timer.
+    //variables for velocity and position of each motor and the timer.
     current_time = (float)(last_time_ms-start_time_ms)/1000; //gets the current time
     pos_before_rad[i] = 2*pi*(float)motorCount[i]/3200; //the postion before 10ms timer
     while (millis()<last_time_ms + desired_Ts_ms) {} 
@@ -282,7 +368,7 @@ void velocities_positions(){
 }
 
 
-
+//P controller for the velocity control of Rho and Phi
 void p_controller_velocity(){
      //p inner controller
     rho_dot_error = rho_dot_desired - rho_dot;
@@ -294,7 +380,7 @@ void p_controller_velocity(){
     Voltage[0] = (add_voltage + delta_voltage)/2;
     voltage_output();
 }
-
+//Rho and Phi position controller using PI
 void p_i_controller_distance(){
     rho_error = rho_desired - rho_actual;
     phi_error = phi_desired - phi_actual;
@@ -321,7 +407,7 @@ void p_i_controller_distance(){
       else{phi_dot_desired = Kp_phi * phi_error + Ki_phi * phi_error_integral;}
     }
 }
-
+//Voltage output called from PI controller.
 void voltage_output(){
   int i;
   //Select direction for the Voltages
@@ -338,15 +424,24 @@ void voltage_output(){
 
 void receive(){
   if (recieveEnabled){
-    // Set the offset, this will always be the first byte.
     offset = Wire.read();
-    // If there is information after the offset, it is telling us more about the command.
-    recieved = true;
-    // If there is information after the offset, it is telling us more about the command.
     while (Wire.available()) {
       instruction[msgLength] = Wire.read();
       msgLength++;
     }
+    
+    marker = instruction[0];
+    byte angleBuffer[BUFFER_SIZE] = {0};
+    byte distanceBuffer[BUFFER_SIZE] = {0};
+    for(int i = 0; i < 4; i++){
+      angleBuffer[i] = instruction[4-i];
+    }
+    for(int i = 0; i < 4; i++){
+      distanceBuffer[i] = instruction[8-i];
+    }
+    memcpy(&distance, distanceBuffer, sizeof(float));
+    memcpy(&angle, angleBuffer, sizeof(float));
+    recieved = true;
   }
 }
 
@@ -376,10 +471,4 @@ void printReceived() {
       Serial.print(String(instruction[i])+"\t");
     }
     Serial.println("");
-}
-
-float dataToFloat(){
-  float f;
-  memcpy(&f, instruction, sizeof(float));
-  return f;
 }

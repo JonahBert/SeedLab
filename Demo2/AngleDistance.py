@@ -2,32 +2,21 @@
 Demo 2: Detect angle of aruco markers and distance
 Authors: Joseph Kirby, Jonah Bertolino, Hunter Burnham
 Resources: https://mavicpilots.com/threads/computing-horizontal-field-of-view-fov-from-diagonal-fov.140386/ 
-Date Started: 2/28/2024
-Date completed: 3/10/2024
-Description: Within this file, we are taking our aruco detection from previous projects and using it to now calculate the angle from the center of the camera in the 
-    x direction.
-    We are integrating both the LCD screen threading, queue, and board to display the camera angles from the camera detecting the aruco marker.
-    We configured the angle to be positive when it is on the left of the screen and oppositely when it is on the right being a negative angle.
-    The angles we have calculated are in degrees.
+Date Started: 3/29/2024
+Date completed: 4/5/2024
+Description: This program continuously searches for Aruco markers and calaculates the horizontal angle from the camera axis and the distance from
+the camera of the marker. It then packs the data into a struct to convert each float value into 4 bytes. It thens sends the bytes from the distance
+and angle calculations plus one more that says wether or not a marker is detected and then sends the data to the arduino using i2c.
+Pin Connections: Connnect pins A5,A6 and GND on Arduion to the i2c pins on the PI
 """
-import threading
+import struct
 import queue
 import board
 import cv2
 from cv2 import aruco
 from smbus2 import SMBus
-import adafruit_character_lcd.character_lcd_rgb_i2c as character_lcd
+from time import sleep
 
-
-# Initialise I2C bus.
-i2cLCD = board.I2C()
-
-#initialize threading queue
-qAngle = queue.Queue()
-qDistance= queue.Queue()
-#make max size once to keep qeue filling up with past values that are no longer relevant i.e. the marker moving but old values are still in queue
-qAngle = queue.Queue(maxsize=1)
-qDistance = queue.Queue(maxsize=1)  
 
 
 # I2C address of the Arduino, set in Arduino sketch
@@ -43,7 +32,7 @@ aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_50)
 camera = cv2.VideoCapture(0)
 
 #exposure value
-exp_val = -9
+exp_val = -7
 
 #set dimensions and parameters
 camera.set(cv2.CAP_PROP_FRAME_WIDTH,640)
@@ -56,56 +45,8 @@ centerY = 480//2
 heightAt1ft = 105
 
 #according to datasheet the field of view is 68.5 Degrees diagonally
-#initialize Fov
-fullFOV = 53.1
+fullFOV = 51.6
 halfFOV = fullFOV / 2
-
-def writeToLCDandARD():
-    # Initialize LCD
-    lcd_columns = 16
-    lcd_rows = 2
-    lcd = character_lcd.Character_LCD_RGB_I2C(i2cLCD, lcd_columns, lcd_rows)
-
-    #intialize message
-    message = "No Markers"
-    lcd.message = message
-
-    #initialize variables
-    angle = 0
-    distance = 0
-
-    #while loop
-    while True:
-        #reset instruction to 0 and marker to false every iteration
-        instruction = 0
-        marker = False
-
-        if not qAngle.empty() and not qDistance.empty():
-            marker = True
-            angle = qAngle.get()
-            distance = qDistance.get()
-        if marker == False:
-            message = "No Markers"
-        else:
-            message = "Angle: " + str(angle) + "\nDist: " + str(distance)
-        lcd.message = message
-        #create list of different commands
-        command = [marker, str(angle), str(distance)]
-        instruction = i2cARD.read_byte_data(ARD_ADDR)
-        if instruction != 0:
-            print("INSTRUCTION RECIEVED: " + str(instruction))
-            try:
-                #ask the arduino to take on encoder reading
-                #index command list with instruction to send proper value (more elegant than state machine i think)
-                #if instruction is 1 probably just need to write a byte not a block
-                i2cARD.write_block_data(ARD_ADDR, 0, command[instruction - 1])
-                print("DATA SENT SUCCESFULLY: " + str(command[instruction - 1]))
-            except IOError:
-                print("Could not write data to the to the Arduino.")
-
-#start conditional            
-myThread = threading.Thread(target=writeToLCDandARD,args=())
-myThread.start()
 
 #declare variables
 prevAngle = 0
@@ -117,7 +58,7 @@ while True:
     #take picture
     ret, frame = camera.read()
     grey = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY) # Make the image greyscale for ArUco detection
-    cv2.imshow("overlay",grey)
+    #cv2.imshow("overlay",grey)
 
     #run until keypress
     k = cv2.waitKey(1) & 0xFF
@@ -127,6 +68,11 @@ while True:
     #detect markers
     corners,ids,rejected = aruco.detectMarkers(grey,aruco_dict)
 
+    #variables
+    marker = 0
+    instruction = 0
+    distance = 0
+    angle = 0
     
     #if marker is detected, calculate center
     if corners is not None:
@@ -149,19 +95,37 @@ while True:
                 angle = -1 * halfFOV * (deltaX / centerX)
                 angle = round(angle,3)
 
+                
                 #calculate height and use ratios to calculate distance
                 height = newCorners[1][1] - newCorners[0][1]
-                distance = heightAt1ft / height
+                if height != 0:
+                    distance = heightAt1ft / height
                 distance = round(distance,3)
 
-                #qAngle.queue.clear()
-                qAngle.put(angle)
-                prevAngle = angle
-                
-                #qDistance.queue.clear()
-                qDistance.put(distance)
-                prevDistance = distance
-                
-   
+                #set marker detected flag
+                marker = 1
+
+        #pack floats for angle and distance
+        anglePacked = list(struct.pack('!f', float(angle)))
+        distancePacked = list(struct.pack('!f', float(distance)))
+
+        #place values in list to be indexed later
+        command = [marker]
+        for i in anglePacked:
+            command.append(i)
+        for i in distancePacked:
+            command.append(i)
+        
+        #if there is a marker send data to arduino
+        if marker:
+            try:
+                i2cARD.write_i2c_block_data(ARD_ADDR, 0, command)
+                print("DATA SENT SUCCESFULLY: " + str(command))
+            except:
+                print("Error" + str(angle))
+        sleep(0.1)
+
+
+  
 cv2.destroyAllWindows()
 camera.release()
