@@ -3,10 +3,7 @@ Controls Coders: Caden Nubel & Joel Shorey & Hunter Burnham
 Start Date: 3/25/24
 Completion Date: 4/5/24
 
-Objective: In the first type, the robot searches for the marker in a stationary circle, then moves to within 1 foot of the beacon.
-The robot must stop after moving towards the beacon, and this stopping point must be within 1 foot of the marker.
-If the robot does not start to move within 30 seconds of the go signal, the trial counts as a failure. If the robot hits the beacon, 
-or fails to stop after approaching the beacon, a failure is charged. The trials are judged based on time and number of failures.
+Objective: Search for the marker and then approach it getting within one foot.
 
 Explaination: This code uses communication between a Pi and Arudino using i2c and a P-I-controller for position and P-controller for velocity from encoders. 
 A state machine is used in order to move from state to state and it is moved forward either by the Pi detecting a marker or by finishing a case. 

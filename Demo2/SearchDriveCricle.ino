@@ -15,6 +15,7 @@ encoder counts to make it turn 360 degrees around the marker.
 Setup: Pins 2 & 3 should be going to the motor encoder A pins on motor 1 & 2. The arduino should power the enoders on the
 motors using the 5V pin and GND and then the Motor PWM pins should be connected to pins 9 & 10 for the assciated motors 1 & 2.
 Pins 7 & 8 should go to the direction pin of the motors to set the direction of the motor velocity.
+
 For i2c: connect pins A6,A5, and GND to i2c connections on pi
 */
 #define MY_ADDR 8
