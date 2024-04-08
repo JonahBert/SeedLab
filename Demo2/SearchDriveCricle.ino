@@ -1,4 +1,8 @@
 /*
+Controls Coders: Caden Nubel & Joel Shorey & Hunter Burnham
+Start Date: 3/25/24
+Completion Date: 4/5/24
+
 Objective: Search for a marker, drive up to it, then circle the marker without hitting it or going outside of a 2 foot radius.
 
 Explaination: This code uses communication between a Pi and arudino using I2C and a PI controller for position and P controller for velocity from encoders. 
