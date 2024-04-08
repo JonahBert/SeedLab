@@ -2,13 +2,12 @@
 Demo 2: Detect angle of aruco markers and distance
 Authors: Joseph Kirby, Jonah Bertolino, Hunter Burnham
 Resources: https://mavicpilots.com/threads/computing-horizontal-field-of-view-fov-from-diagonal-fov.140386/ 
-Date Started: 2/28/2024
-Date completed: 3/10/2024
-Description: Within this file, we are taking our aruco detection from previous projects and using it to now calculate the angle from the center of the camera in the 
-    x direction.
-    We are integrating both the LCD screen threading, queue, and board to display the camera angles from the camera detecting the aruco marker.
-    We configured the angle to be positive when it is on the left of the screen and oppositely when it is on the right being a negative angle.
-    The angles we have calculated are in degrees.
+Date Started: 3/29/2024
+Date completed: 4/5/2024
+Description: This program continuously searches for Aruco markers and calaculates the horizontal angle from the camera axis and the distance from
+the camera of the marker. It then packs the data into a struct to convert each float value into 4 bytes. It thens sends the bytes from the distance
+and angle calculations plus one more that says wether or not a marker is detected and then sends the data to the arduino using i2c.
+Pin Connections: Connnect pins A5,A6 and GND on Arduion to the i2c pins on the PI
 """
 import struct
 import queue
@@ -38,25 +37,14 @@ exp_val = -7
 #set dimensions and parameters
 camera.set(cv2.CAP_PROP_FRAME_WIDTH,640)
 camera.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
-#camera.set(cv2.CAP_PROP_EXPOSURE, exp_val)
-
-#camera.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
-#camera.set(cv2.CAP_PROP_FRAME_HEIGHT,720)
 camera.set(cv2.CAP_PROP_EXPOSURE, exp_val)
 centerX = 640//2
 centerY = 480//2
-
-#centerX = 1280//2
-#centerY = 720//2
 
 #height of marker in pixels 1 foot away from camera
 heightAt1ft = 105
 
 #according to datasheet the field of view is 68.5 Degrees diagonally
-#initialize Fov
-#fullFOV = 53.1
-
-#fullFOV = 63
 fullFOV = 51.6
 halfFOV = fullFOV / 2
 
@@ -65,14 +53,12 @@ prevAngle = 0
 prevDistance = 0
 angle = 0
 distance = 0
-wait = 50
 
 while True:
-    wait += 1
     #take picture
     ret, frame = camera.read()
     grey = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY) # Make the image greyscale for ArUco detection
-    cv2.imshow("overlay",grey)
+    #cv2.imshow("overlay",grey)
 
     #run until keypress
     k = cv2.waitKey(1) & 0xFF
@@ -129,13 +115,15 @@ while True:
             command.append(i)
         for i in distancePacked:
             command.append(i)
-        if wait > 3 and marker:
+        
+        #if there is a marker send data to arduino
+        if marker:
             try:
                 i2cARD.write_i2c_block_data(ARD_ADDR, 0, command)
                 print("DATA SENT SUCCESFULLY: " + str(command))
             except:
                 print("Error" + str(angle))
-            wait = 0
+        sleep(0.1)
 
 
   
