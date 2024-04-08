@@ -5,10 +5,10 @@ circling the beacon, and this stopping point must be within 3 inches of the poin
 beacon. If the robot does not start to move within 30 seconds of the go signal, the trial counts as a failure. If the
 robot goes father than 2 feet from the beacon when circling it, or hits the beacon, or fails to stop after circling, a
 failure is charged. The trials are judged based on time and number of failures.
-Explaination: This code uses communication between a PI and arudino using I2C and a PI controller for position and P controller for velocity from encoders. 
-A state machine is used in order to move from state to state and it is moved forward either by the PI detecting or by it finishing a case. 
-The cases include detection, this turns in 30 degree intervals and pauses to allow detection by PI, this is broken if the PI detects an aruco marker.
-Then is the center case where the PI sends the angle from center and we use the PID conroller to center the robot that many degrees. 
+Explaination: This code uses communication between a Pi and arudino using I2C and a PI controller for position and P controller for velocity from encoders. 
+A state machine is used in order to move from state to state and it is moved forward either by the Pi detecting or by it finishing a case. 
+The cases include detection, this turns in 30 degree intervals and pauses to allow detection by Pi, this is broken if the Pi detects an aruco marker.
+Then is the center case where the Pi sends the angle from center and we use the PID conroller to center the robot that many degrees. 
 The Drive case uses PID to make the robot drive a little less than 7 feet forward. Turn case then turns it 90 degrees and the circle case uses a P controller and 
 encoder counts to make it turn 360 degrees around the marker.
 Setup: Pins 2 & 3 should be going to the motor encoder A pins on motor 1 & 2. The arduino should power the enoders on the
