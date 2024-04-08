@@ -220,19 +220,12 @@ void loop() {
             //only continue if data was received, flag set in recieve ISR
             recieveEnabled = false;
             Serial.println(phi_error);
-            //printReceived();
-            //turn angle
             velocities_positions();
             p_i_controller_distance();
             p_controller_velocity();
             msgLength = 0;
             recieved = false;
-            //Serial.print("Angle Received: \n");
-            //Serial.println(angle);
-            //Serial.print("Driving\n");
-            //analogWrite(9,0);
-            //analogWrite(10,0);
-
+            // if it gets to the desired value switch to drive state and revert the antiwindup values.
             if (phi_actual = phi_desired) {
                 machineState = state::DRIVE;
                 rho_desired = rho_actual + (6.1 * 0.3048);
@@ -246,6 +239,7 @@ void loop() {
             break;
 
         case state::DRIVE:
+            // drive forward a little less than 7 feet
             recieveEnabled = true;
             //reply = REQUEST_DISTANCE;
 
@@ -253,21 +247,11 @@ void loop() {
             velocities_positions();
             p_i_controller_distance();
             p_controller_velocity();
-            
-            //printReceived();
             recieveEnabled = false;
-            //output recieved message for debugging purposes
-            //distance = dataToFloat();
-            //Serial.print("Distance Recieved: ");
-            //Serial.println(distance);
-            //drive distance to marker - 1ft
             recieved = false;
             //make sure msgLength set to 0
             msgLength = 0;
-            //Serial.print("Distance Receceived: \n");
-            //Serial.println(distance);
-            //Serial.print("Stopping\n");
-            //machineState = state::STOP;
+            // if the value of motor turns is close to what it should be.
             if (rho_desired - 0.05 < rho_actual && rho_actual < 0.05 + rho_desired) {
               machineState = state::TURN;
               desired_degrees = desired_degrees - 86;
@@ -285,13 +269,11 @@ void loop() {
             break;
 
         case state::TURN:
+        // turn 90 degrees to set up circle.
           //receiveEnabled = true;
           velocities_positions();
           p_i_controller_distance();
           p_controller_velocity();
-          //receiveEnabled = false;
-          //received = false;
-          //msgLength = 0;
           if (phi_desired - 0.05 < phi_actual && phi_actual < 0.05 + phi_desired) {
             phi_actual_after_turn = phi_actual;
             
@@ -308,7 +290,7 @@ void loop() {
           break;
 
         case state::CIRCLE:
-            //drive in circle, eventuallly this would circle until marker detected again I think for final demo
+            //drive in circle using p controller with semi equivalent velocities.
             desired_feet = desired_feet + desired_circle_distance_feet;
             rho_desired = 0.3048 * desired_feet;
             rho_time_stamp = rho_actual;
@@ -332,6 +314,7 @@ void loop() {
             break;
         
         case state::STOP:
+            //Stop case for the end that goes when encoders get near 360 degrees around a circle
             analogWrite(9,0);
             analogWrite(10,0);
             machineState = state::STOP;
@@ -341,11 +324,12 @@ void loop() {
     }
 }
 
-
+//Function for calculating velocities and positions from encoder positions
+//Including Rho and Phi 
 void velocities_positions(){
   int i;
   for(i=0;i<2;i++){
-    //variabls for velocity and position of each motor and the timer.
+    //variables for velocity and position of each motor and the timer.
     current_time = (float)(last_time_ms-start_time_ms)/1000; //gets the current time
     pos_before_rad[i] = 2*pi*(float)motorCount[i]/3200; //the postion before 10ms timer
     while (millis()<last_time_ms + desired_Ts_ms) {} 
@@ -364,7 +348,7 @@ void velocities_positions(){
 }
 
 
-
+//P controller for the velocity control of Rho and Phi
 void p_controller_velocity(){
      //p inner controller
     rho_dot_error = rho_dot_desired - rho_dot;
@@ -376,7 +360,7 @@ void p_controller_velocity(){
     Voltage[0] = (add_voltage + delta_voltage)/2;
     voltage_output();
 }
-
+//Rho and Phi position controller using PI
 void p_i_controller_distance(){
     rho_error = rho_desired - rho_actual;
     phi_error = phi_desired - phi_actual;
@@ -403,7 +387,7 @@ void p_i_controller_distance(){
       else{phi_dot_desired = Kp_phi * phi_error + Ki_phi * phi_error_integral;}
     }
 }
-
+//Voltage output called from PI controller.
 void voltage_output(){
   int i;
   //Select direction for the Voltages
@@ -420,10 +404,7 @@ void voltage_output(){
 
 void receive(){
   if (recieveEnabled){
-    // Set the offset, this will always be the first byte.
     offset = Wire.read();
-    // If there is information after the offset, it is telling us more about the command.
-    // If there is information after the offset, it is telling us more about the command.
     while (Wire.available()) {
       instruction[msgLength] = Wire.read();
       msgLength++;
