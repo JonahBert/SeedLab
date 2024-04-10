@@ -178,12 +178,9 @@ void setup() {
 
 void loop() {
     static state machineState = state::IDLE;
-
     //state machine to control different parts of task
     switch (machineState){
         case state::IDLE:
-            //check flag controls wether or not robot will stop halfway and recenter
-            Serial.print("Searching\n");
             machineState = state::SEARCH;
             break;
 
@@ -232,116 +229,34 @@ void loop() {
 
         case state::CENTER:
             //short pause to allow PI to get correct angle
-            recieveEnabled = true;
-            Ki_phi = 0.3;
-            Kp_phi = 50;
-            max_phi_dot = 0.08;
-            min_phi_dot = -0.08;
-            //only continue if data was received, flag set in recieve ISR
-            recieveEnabled = false;
-            Serial.println(phi_error);
-            velocities_positions();
-            p_i_controller_distance();
-            p_controller_velocity();
-            msgLength = 0;
-            recieved = false;
-            // if it gets to the desired value switch to drive state and revert the antiwindup values.
-            if (phi_actual = phi_desired) {
-                machineState = state::DRIVE;
-                rho_desired = rho_actual + (6.1 * 0.3048);
-                max_phi_dot = 0.8;
-                max_rho_dot = 1;
-                min_phi_dot = -0.8;
-                min_rho_dot = -1;
-                Ki_phi = 0.1;
-            }
-
+            machineState = state::DRIVE;
             break;
 
         case state::DRIVE:
             // drive forward a little less than 7 feet
-            recieveEnabled = true;
-            //reply = REQUEST_DISTANCE;
-
-            //drive 6.5 feet
-            velocities_positions();
-            p_i_controller_distance();
-            p_controller_velocity();
-            recieveEnabled = false;
-            recieved = false;
-            //make sure msgLength set to 0
-            msgLength = 0;
-            // if the value of motor turns is close to what it should be.
-            if (rho_desired - 0.05 < rho_actual && rho_actual < 0.05 + rho_desired) {
-              machineState = state::TURN;
-              desired_degrees = desired_degrees - 86;
-              phi_desired = desired_degrees * pi / 180;
-              analogWrite(9,0);
-              analogWrite(10,0);
-
-              /*
-              //Pause
-              last_time_ms_2 = millis();
-              while (millis() < last_time_ms_2 + desired_Ts_ms_2) {}
-              */
-
-            }
+            machineState = state::TURN;
+            //if last marker
+            machineState = state::STOP;
             break;
 
         case state::TURN:
-        // turn 90 degrees to set up circle.
-          //receiveEnabled = true;
-          velocities_positions();
-          p_i_controller_distance();
-          p_controller_velocity();
-          if (phi_desired - 0.05 < phi_actual && phi_actual < 0.05 + phi_desired) {
-            phi_actual_after_turn = phi_actual;
-            
+            // turn 90 degrees to set up circle.
             machineState = state::CIRCLE;
-            analogWrite(9,0);
-            analogWrite(10,0);
-
-            /*
-            //Pause
-            last_time_ms_2 = millis();
-            while (millis() < last_time_ms_2 + desired_Ts_ms_2) {} 
-            */
-          }
-          break;
+            break;
 
         case state::CIRCLE:
             //drive in circle using p controller with semi equivalent velocities.
-            desired_feet = desired_feet + desired_circle_distance_feet;
-            rho_desired = 0.3048 * desired_feet;
-            rho_time_stamp = rho_actual;
-            rho_actual = 0;
-            while (phi_actual < phi_actual_after_turn + 2*pi - 0.1) {
-              while(phi_actual < phi_actual_after_turn + pi){
-              rho_dot_desired = 1.7;
-              phi_dot_desired = (rho_dot_desired / circle_radius_feet);
-              velocities_positions();
-              p_controller_velocity();}
-              rho_dot_desired = 2;
-              phi_dot_desired = (rho_dot_desired / circle_radius_feet) - 0.1;
-              velocities_positions();
-              p_controller_velocity();
-
-
-            }
-            analogWrite(9,0);
-            analogWrite(10,0);
-            machineState = state::STOP;
+            //if marker detected
+            machineState = state::CENTER;
             break;
         
         case state::STOP:
             //Stop case for the end that goes when encoders get near 360 degrees around a circle
-            analogWrite(9,0);
-            analogWrite(10,0);
-            machineState = state::STOP;
             //do nothing
             break;
 
     }
+    
 }
 
 //Function for calculating velocities and positions from encoder positions
