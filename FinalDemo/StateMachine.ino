@@ -37,6 +37,8 @@ void loop() {
         case state::DRIVE:
             // drive forward a little less than 7 feet
             machineState = state::TURN;
+            //if last marker
+            machineState = state::STOP;
             break;
 
         case state::TURN:
@@ -46,8 +48,8 @@ void loop() {
 
         case state::CIRCLE:
             //drive in circle using p controller with semi equivalent velocities.
-            //circle until marker detected
-            machineState = state::STOP;
+            //if marker detected
+            machineState = state::CENTER;
             break;
         
         case state::STOP:
