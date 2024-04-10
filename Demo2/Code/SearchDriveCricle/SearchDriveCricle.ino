@@ -224,6 +224,7 @@ void loop() {
                     }
                     desired_degrees = desired_degrees - 30;
                     phi_desired = desired_degrees * pi / 180;
+                    marker = false;
                 }
                 recieved = false;
                 msgLength = 0;
