@@ -279,12 +279,6 @@ void loop() {
               analogWrite(9,0);
               analogWrite(10,0);
 
-              /*
-              //Pause
-              last_time_ms_2 = millis();
-              while (millis() < last_time_ms_2 + desired_Ts_ms_2) {}
-              */
-
             }
             break;
 
