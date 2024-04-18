@@ -300,7 +300,7 @@ void velocities_positions() {
     pos_after_rad[i] = 2 * pi * (float)motorCount[i]/3200;
     delta_pos_rad[i] = pos_after_rad[i] - pos_before_rad[i];
     pos_velo_rad_s[i] = delta_pos_rad[i] / 0.005; //gets instantaneous velocity of position compared to 10ms before
-    average[i] = average[i] + Voltage[i];
+    //average[i] = average[i] + Voltage[i];
     } 
 
     //variables for actual speed and positions

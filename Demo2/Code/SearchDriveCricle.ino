@@ -209,14 +209,11 @@ void loop() {
             if (recieved == true){
                 analogWrite(9,0);
                 analogWrite(10,0);
-                printReceived();
                 //output recieved message for debugging purposes
                 if (marker == 1){
                     //marker found
-                    Serial.print("centering\n");
                     machineState = state::CENTER;
                     angle1 = angle;
-                    Serial.println(angle1);
                     if(angle1 > 1.8 || angle1 < -1.8){
                       desired_degrees = angle1 + desired_degrees;
                       marker = 0;
@@ -224,7 +221,6 @@ void loop() {
                     }
                     desired_degrees = desired_degrees - 30;
                     phi_desired = desired_degrees * pi / 180;
-                    marker = false;
                 }
                 recieved = false;
                 msgLength = 0;
@@ -240,14 +236,13 @@ void loop() {
             min_phi_dot = -0.08;
             //only continue if data was received, flag set in recieve ISR
             recieveEnabled = false;
-            Serial.println(phi_error);
             velocities_positions();
             p_i_controller_distance();
             p_controller_velocity();
             msgLength = 0;
             recieved = false;
             // if it gets to the desired value switch to drive state and revert the antiwindup values.
-            if (phi_actual = phi_desired) {
+            if (phi_desired - 0.01 < phi_actual && phi_actual < 0.01 + phi_desired) {
                 machineState = state::DRIVE;
                 rho_desired = rho_actual + (6.1 * 0.3048);
                 max_phi_dot = 0.8;
