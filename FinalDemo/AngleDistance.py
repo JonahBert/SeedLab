@@ -42,17 +42,17 @@ centerX = 640//2
 centerY = 480//2
 
 #height of marker in pixels 1 foot away from camera
-heightAt1ft = 105
+heightAt1ft = 110
 
 #according to datasheet the field of view is 68.5 Degrees diagonally
 fullFOV = 51.6
 halfFOV = fullFOV / 2
 
 #declare variables
-prevAngle = 0
-prevDistance = 0
 angle = 0
 distance = 0
+closestFound = False
+
 
 while True:
     #take picture
@@ -71,9 +71,8 @@ while True:
     #variables
     marker = 0
     instruction = 0
-    distance = 0
     angle = 0
-    
+    markerVals = []
     #if marker is detected, calculate center
     if corners is not None:
         #itirate through each point recorded in corners
@@ -81,7 +80,7 @@ while True:
             markerDetects = corners[i]
             if len(markerDetects == 4):
                 #sets the variable newCorners to all of the corner values from the aruco marker when it is detected.
-                newCorners = corners[0][0]
+                newCorners = corners[i][0]
                 #The xCoord variable stores all of the x value coordinates and divides them by 4 to get the center x value.
                 xMarker = (newCorners[0][0] + newCorners[1][0] + newCorners[2][0] + newCorners[3][0]) / 4
                 #The yCoord variable stores all of the y value coordinates and divides them by 4 to get the center y value.
@@ -97,35 +96,50 @@ while True:
 
                 
                 #calculate height and use ratios to calculate distance
-                height = newCorners[1][1] - newCorners[0][1]
+                height = abs(newCorners[2][1] - newCorners[0][1])
                 if height != 0:
                     distance = heightAt1ft / height
                 distance = round(distance,3)
-
+                
+                #add distance and angle of each marker to list
+                markerVals.append([distance,angle])
+                
                 #set marker detected flag
                 marker = 1
+                
+        if marker:     
+            #find closest marker
+            minDistance = 100
+            desiredIndex = 0
+            for i in range(len(markerVals)):
+                if markerVals[i][0] <= minDistance:
+                    desiredIndex = i
+                    minDistance = markerVals[i][0]
+                    
+            #first marker will be 4 ft away
+            if minDistance < 4.5:
+                closestFound = True
 
-        #pack floats for angle and distance
-        anglePacked = list(struct.pack('!f', float(angle)))
-        distancePacked = list(struct.pack('!f', float(distance)))
+            #pack floats for angle and distance
+            anglePacked = list(struct.pack('!f', float(markerVals[desiredIndex][1])))
+            distancePacked = list(struct.pack('!f', float(markerVals[desiredIndex][0])))
 
-        #place values in list to be indexed later
-        command = [marker]
-        for i in anglePacked:
-            command.append(i)
-        for i in distancePacked:
-            command.append(i)
+            #place values in list to be indexed later
+            command = [marker]
+            for i in anglePacked:
+                command.append(i)
+            for i in distancePacked:
+                command.append(i)
         
         #if there is a marker send data to arduino
-        if marker:
+        if marker and closestFound:
             try:
                 i2cARD.write_i2c_block_data(ARD_ADDR, 0, command)
-                print("DATA SENT SUCCESFULLY: " + str(command))
+                print("DATA SENT SUCCESFULLY: " + str(marker) + ' ' + str(markerVals[desiredIndex][0]) + ' ' + str(markerVals[desiredIndex][1]))
             except:
-                print("Error" + str(angle))
+                print("Error" + str(markerVals[desiredIndex][0]) + ' ' + str(markerVals[desiredIndex][1]))
+
         sleep(0.1)
-
-
   
 cv2.destroyAllWindows()
 camera.release()
