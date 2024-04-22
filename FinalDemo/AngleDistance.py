@@ -104,8 +104,8 @@ while True:
                 #add distance and angle of each marker to list
                 markerVals.append([distance,angle])
                 
-                #set marker detected flag
-                marker = 1
+                marker = 1;
+                    
                 
         if marker:     
             #find closest marker
@@ -132,14 +132,14 @@ while True:
                 command.append(i)
         
         #if there is a marker send data to arduino
-        if marker and closestFound:
+        if marker and closestFound and markerVals[desiredIndex][0] > 1.5:
             try:
                 i2cARD.write_i2c_block_data(ARD_ADDR, 0, command)
                 print("DATA SENT SUCCESFULLY: " + str(marker) + ' ' + str(markerVals[desiredIndex][0]) + ' ' + str(markerVals[desiredIndex][1]))
             except:
                 print("Error" + str(markerVals[desiredIndex][0]) + ' ' + str(markerVals[desiredIndex][1]))
 
-        sleep(0.1)
+            sleep(0.1)
   
 cv2.destroyAllWindows()
 camera.release()
