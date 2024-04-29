@@ -1,9 +1,9 @@
 """
-Demo 2: Detect angle of aruco markers and distance
+Final Demo: Detect angle of aruco markers and distance
 Authors: Joseph Kirby, Jonah Bertolino, Hunter Burnham
 Resources: https://mavicpilots.com/threads/computing-horizontal-field-of-view-fov-from-diagonal-fov.140386/ 
 Date Started: 3/29/2024
-Date completed: 4/5/2024
+Date completed: 4/29/2024
 Description: This program continuously searches for Aruco markers and calaculates the horizontal angle from the camera axis and the distance from
 the camera of the marker. It then packs the data into a struct to convert each float value into 4 bytes. It thens sends the bytes from the distance
 and angle calculations plus one more that says wether or not a marker is detected and then sends the data to the arduino using i2c.
@@ -138,7 +138,7 @@ while True:
                 print("DATA SENT SUCCESFULLY: " + str(marker) + ' ' + str(markerVals[desiredIndex][0]) + ' ' + str(markerVals[desiredIndex][1]))
             except:
                 print("Error" + str(markerVals[desiredIndex][0]) + ' ' + str(markerVals[desiredIndex][1]))
-
+            #sleep to avoid busy waiting
             sleep(0.1)
   
 cv2.destroyAllWindows()
