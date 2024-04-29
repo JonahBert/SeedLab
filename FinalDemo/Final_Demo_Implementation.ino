@@ -5,7 +5,8 @@ Completion Date: 4/22/24
 
 Objective: Navigate a course of aruco markers on the outside, without going inside the loop.
 
-Explanation: 
+Explanation: Approach each marker individually, measuring the angle and the distance. After 7 approaches, stop at the point we started at.
+
 
 Setup: Pins 2 & 3 should be going to the motor encoder A pins on motor 1 & 2. The arduino should power the enoders on the
 motors using the 5V pin and GND and then the Motor PWM pins should be connected to pins 9 & 10 for the assciated motors 1 & 2.
@@ -203,7 +204,7 @@ void loop() {
           analogWrite(9,0);
           analogWrite(10,0);
           //Pause between searches
-          while (millis() < last_time_ms_2 + 2000) {} 
+          while (millis() < last_time_ms_2 + 1500) {} 
           last_time_ms_2 = millis();
         }
 
@@ -222,9 +223,6 @@ void loop() {
           if (marker == 1) {
             //disable receive because angle has already been set for center case
             receiveEnabled = false;
-            //pause
-            //while (millis() < last_time_ms_2 + desired_Ts_ms_2) {} 
-            //last_time_ms_2 = millis();
             machineState = state::CENTER;
             phi_desired = phi_actual;
             desired_degrees = phi_desired * 180 / pi;
@@ -266,7 +264,7 @@ void loop() {
         if (phi_desired - 0.05 <= phi_actual && phi_actual <= 0.05 + phi_desired) {
             //enable receive function
             receiveEnabled = true;
-            //don't continue until received flag is set, might not need this conditional
+            //don't continue until received flag is set
             //reset receive flag
             received = false;
             //reset msgLength
@@ -275,7 +273,9 @@ void loop() {
             phi_desired = phi_actual;
             analogWrite(9,0);
             analogWrite(10,0);
-            while (millis() < last_time_ms_2 + 2000) {} 
+            //necessary delay to ensure the robot functions correctly in next state
+            last_time_ms_2 = millis();
+            while (millis() < last_time_ms_2 + 1000) {} 
             last_time_ms_2 = millis();
             //reset gain and anti-windup constants
             max_phi_dot = 0.8;
@@ -286,7 +286,7 @@ void loop() {
             Ki_phi = 0.1;
             desired_feet = desired_feet + (distance - 0.6);
             rho_desired = 0.3048 * desired_feet;
-            //disable receivefunctions
+            //disable receive functions
             receiveEnabled = false;
             
         }
@@ -304,6 +304,7 @@ void loop() {
         msgLength = 0;
         //STOP CONDITION. Next: TURN
         if (rho_desired - 0.01 <= rho_actual && rho_actual <= 0.01 + rho_desired) {
+            //update the number of approaches the robot has completed, and set conditions for the next state
           numberOfApproaches = numberOfApproaches + 1;
           analogWrite(9,0);
           analogWrite(10,0);
@@ -320,10 +321,10 @@ void loop() {
 
 
       //TURN state. 
-      //Stop Condition: 90 degree turn is completed.
+      //Stop Condition: 80 degree turn is completed.
       //Next: CIRCLE state.
       case state::TURN:
-        // turn 75 degrees to set up circle.
+        //turn 80 degrees to set up circle case.
         receiveEnabled = false;
         velocities_positions();
         p_i_controller_distance();
@@ -346,9 +347,11 @@ void loop() {
       //Stop Condition: A marker is detected within the camera's frame of reference.
       //Next: CENTER state.
       case state::CIRCLE:
+      //conditionals check which approach the robot is in, and tweaks conditions accordingly
+      //after the seventh approach, the robot knows it is almost done with the course
       if (numberOfApproaches == 7) {
         circle_radius_feet = 1.7;
-        while (phi_actual > (phi_actual_after_turn - 3*pi/4 + 0.2)) {
+        while (phi_actual > (phi_actual_after_turn - 1.05 * pi/2)) {
           rho_dot_desired = 1.0;
           phi_dot_desired = -(rho_dot_desired / circle_radius_feet);
           velocities_positions();
@@ -357,7 +360,14 @@ void loop() {
         machineState = state::STOP;
         break;
       }
-        //drive in circle using P-controller with semi equivalent velocities.
+      if (numberOfApproaches == 4) {
+        circle_radius_feet = 1.5;
+      } else if (numberOfApproaches == 6) {
+        circle_radius_feet = 1.5;
+      } else {
+        circle_radius_feet = 1.85;
+      }
+        //drive in circle using P-controller with semi-equivalent velocities.
         rho_dot_desired = 1.0;
         phi_dot_desired = -(rho_dot_desired / circle_radius_feet);
         velocities_positions();
@@ -367,9 +377,11 @@ void loop() {
         if (marker == 1) {
             analogWrite(9,0);
             analogWrite(10,0);
+            //necessary delay to ensure the robot functions correctly in next state
             last_time_ms_2 = millis();
-            while (millis() < last_time_ms_2 + 2000) {} 
+            while (millis() < last_time_ms_2 + 1000) {} 
             last_time_ms_2 = millis();
+            //Set desired angle and distance for next cases
             machineState = state::CENTER;
             rho_desired = rho_actual;
             phi_desired = phi_actual;
@@ -378,7 +390,6 @@ void loop() {
             angle1 = angle;
             desired_degrees = desired_degrees + angle1;
             phi_desired = desired_degrees * pi / 180;
-
             //disable receive function
             receiveEnabled = false;
             //reset receive flag
@@ -396,10 +407,9 @@ void loop() {
       //Stop Condition: None.
       //Next: None.
       case state::STOP:
+        //STOP when in stop condition
         analogWrite(9,0);
         analogWrite(10,0);
-        //Stop case for the end that goes when encoders get near 360 degrees around a circle
-        //do nothing
         break;
 
     }
