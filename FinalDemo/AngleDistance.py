@@ -104,7 +104,7 @@ while True:
                 #add distance and angle of each marker to list
                 markerVals.append([distance,angle])
                 
-                marker = 1;
+                marker = 1
                     
                 
         if marker:     

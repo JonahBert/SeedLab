@@ -175,13 +175,11 @@ void loop() {
 
     //state machine to control the robot's movement
     switch (machineState) {
-
-
       //IDLE state. 
       //Stop Condition: Startup.
       //Next: SEARCH state.
       case state::IDLE:
-        //receiveEnabled = false;
+        receiveEnabled = false;
         machineState = state::SEARCH;
         break;
 
@@ -191,7 +189,10 @@ void loop() {
       //Next: CENTER state.
       case state::SEARCH:
         //turn in 30 degree increments until aruco marker is found
+
+        //enable receive function
         receiveEnabled = true;
+
         velocities_positions();
         max_phi_dot = 1;
         phi_desired = desired_degrees * pi / 180;
@@ -212,7 +213,7 @@ void loop() {
         p_i_controller_distance();
         p_controller_velocity();
         
-        //check recieve flag
+        //check recieve flag (shouldnt need to check anymore, try without)
         if (received == true) {
           //Turn off motors for state switch
           analogWrite(9,0);
@@ -223,8 +224,7 @@ void loop() {
             //pause
             while (millis() < last_time_ms_2 + desired_Ts_ms_2) {} 
             last_time_ms_2 = millis();
-            machineState = state::CENTER;
-            //set angle to adjust for center state
+            //grab agle
             angle1 = angle; 
             Serial.println(angle1);
             //check if correction is needed, it is not needed for small angles off
@@ -232,7 +232,6 @@ void loop() {
             if(angle1 > 1.8 || angle1 < -1.8) {
               desired_degrees = angle1 + desired_degrees;
             }
-            //receiveEnabled = false;
             //subtract the 30 degrees that were added, because the marker was found
             //update desired angle for controller functions
             desired_degrees = desired_degrees - 30;
@@ -242,15 +241,16 @@ void loop() {
             Kp_phi = 50;
             max_phi_dot = 0.08;
             min_phi_dot = -0.08;
+
             //reset marker flag
             marker = 0;
             //disable receive because angle has already been set for center case
             receiveEnabled = false;
+
+            machineState = state::CENTER;
           }
           //reset received flag
           received = false;
-          //reset message length
-          msgLength = 0;
         }
         break;
 
@@ -266,29 +266,33 @@ void loop() {
         if (phi_desired - 0.05 < phi_actual && phi_actual < 0.05 + phi_desired) {
             //enable receive function
             receiveEnabled = true;
-            //don't continue until received flag is set, might not need this conditional
-            if (received == true){
-                //disable receivefunctions
-                receiveEnabled = false;
-                //reset receive flag
-                received = false;
-                //reset msgLength
-                msgLength = 0;
-                machineState = state::DRIVE;
-                analogWrite(9,0);
-                analogWrite(10,0);
-                while (millis() < last_time_ms_2 + 2000) {} 
-                last_time_ms_2 = millis();
-                //reset gain and anti-windup constants
-                max_phi_dot = 0.8;
-                max_rho_dot = 1;
-                min_phi_dot = -0.8;
-                min_rho_dot = -1;
-                Kp_phi = 60;
-                Ki_phi = 0.1;
-                desired_feet = desired_feet + (distance - 0.7);
-                rho_desired = 0.3048 * desired_feet;
-            }
+
+            //stop motors
+            analogWrite(9,0);
+            analogWrite(10,0);
+
+            //pause
+            while (millis() < last_time_ms_2 + 2000) {} 
+            last_time_ms_2 = millis();
+
+            //reset gain and anti-windup constants
+            max_phi_dot = 0.8;
+            max_rho_dot = 1;
+            min_phi_dot = -0.8;
+            min_rho_dot = -1;
+            Kp_phi = 60;
+            Ki_phi = 0.1;
+
+            //grab distance
+            desired_feet = desired_feet + (distance - 0.7);
+            rho_desired = 0.3048 * desired_feet;
+
+            //disable receive function
+            receiveEnabled = false;
+            //reset receive flag
+            received = false;
+
+            machineState = state::DRIVE;
         }
         break;
 
@@ -300,8 +304,6 @@ void loop() {
         velocities_positions();
         p_i_controller_distance();
         p_controller_velocity();
-        //make sure msgLength set to 0
-        msgLength = 0;
         //STOP CONDITION. Next: TURN
         if (rho_desired - 0.01 < rho_actual && rho_actual < 0.01 + rho_desired) {
           analogWrite(9,0);
@@ -340,6 +342,11 @@ void loop() {
       //Stop Condition: A marker is detected within the camera's frame of reference.
       //Next: CENTER state.
       case state::CIRCLE:
+        //reset marker flag
+        marker = 0;
+        //enable receive function
+        receiveEnabled = true;
+
         //drive in circle using P-controller with semi equivalent velocities.
         rho_dot_desired = 1.0;
         phi_dot_desired = -(rho_dot_desired / circle_radius_feet);
@@ -358,6 +365,8 @@ void loop() {
             phi_desired = phi_actual;
             desired_degrees = phi_desired * 180 / pi;
             desired_feet = rho_desired / 0.3048;
+
+            //grab angle
             angle1 = angle;
             Serial.println(angle1);
             desired_degrees = desired_degrees + angle1;
@@ -369,8 +378,6 @@ void loop() {
             received = false;
             //reset marker flag
             marker = 0;
-            //reset message length (might not need)
-            msgLength = 0;
         }
         
         break;
@@ -471,6 +478,7 @@ void receive() {
   if (receiveEnabled) {
     //reset msg length every time data is received or reset in code after data receieved, see which works best
     msgLength = 0;
+    
     offset = Wire.read();
     while (Wire.available()) {
       instruction[msgLength] = Wire.read();
